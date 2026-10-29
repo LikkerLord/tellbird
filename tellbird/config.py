@@ -37,8 +37,15 @@ def load_json(path, default, allow_comments=False):
 # other key is applied live by a reload (web panel or tray menu).
 KNOWN_VOICES = ["alba", "anna", "michael", "vera", "jane", "eve", "george",
                 "mary", "paul", "charles"]
-FIREBOT_FILTERS = ["word_spam", "long_word", "repeated_message", "copypasta_flood",
-                   "char_run", "word_repeat", "phrase_repeat"]
+FIREBOT_FILTERS = {      # filter name -> how the panel describes it
+    "word_spam": "word spam",
+    "long_word": "an over-long word",
+    "repeated_message": "a repeated message",
+    "copypasta_flood": "a copypasta flood",
+    "char_run": "character runs",
+    "word_repeat": "repeated words",
+    "phrase_repeat": "repeated phrases",
+}
 
 
 def _field(section, key, type_, default, label, help="", **extra):
@@ -67,7 +74,8 @@ CONFIG_SCHEMA = [
     _field("Speech", "read_username", "bool", True, "Read username",
            "Speak the sender's name before the message (twitch mode only)."),
     _field("Speech", "username_format", "str", "{user} says: {text}", "Username format",
-           "How name and message are combined. Placeholders: {user} and {text}."),
+           "How name and message are combined. Placeholders: {user} and {text}.",
+           depends="read_username"),
     _field("Speech", "min_chars", "int", 1, "Minimum characters",
            "Skip messages shorter than this.", min=0),
     _field("Speech", "max_chars", "int", 300, "Maximum characters",
@@ -86,22 +94,28 @@ CONFIG_SCHEMA = [
 
     _field("Filters", "filters.collapse_char_runs", "bool", True, "Collapse character runs",
            '"aaaaaa" -> "aaa", "!!!!!" -> "!!!".'),
-    _field("Filters", "filters.max_char_run", "int", 3, "Max character run", min=1),
+    _field("Filters", "filters.max_char_run", "int", 3, "Max character run", min=1,
+           depends="filters.collapse_char_runs"),
     _field("Filters", "filters.collapse_word_repeats", "bool", True, "Collapse repeated words",
            '"lol lol lol lol lol" -> "lol lol lol".'),
-    _field("Filters", "filters.max_word_repeats", "int", 3, "Max word repeats", min=1),
+    _field("Filters", "filters.max_word_repeats", "int", 3, "Max word repeats", min=1,
+           depends="filters.collapse_word_repeats"),
     _field("Filters", "filters.collapse_phrase_repeats", "bool", True,
            "Collapse repeated phrases",
            '"go team go team go team go team" -> "go team go team go team".'),
     _field("Filters", "filters.max_phrase_words", "int", 4, "Max phrase length (words)",
-           min=2),
-    _field("Filters", "filters.max_phrase_repeats", "int", 3, "Max phrase repeats", min=1),
+           min=2,
+           depends="filters.collapse_phrase_repeats"),
+    _field("Filters", "filters.max_phrase_repeats", "int", 3, "Max phrase repeats", min=1,
+           depends="filters.collapse_phrase_repeats"),
     _field("Filters", "filters.skip_word_spam", "bool", False, "Skip word spam",
            "Skip a message when one word makes up most of it."),
     _field("Filters", "filters.spam_min_words", "int", 6, "Word spam: minimum words",
-           min=1),
+           min=1,
+           depends="filters.skip_word_spam"),
     _field("Filters", "filters.spam_ratio", "float", 0.6, "Word spam: ratio",
-           "0.6 = one word is at least 60% of all words.", min=0, max=1),
+           "0.6 = one word is at least 60% of all words.", min=0, max=1,
+           depends="filters.skip_word_spam"),
     _field("Filters", "filters.max_word_length", "int", 0, "Max word length",
            "Skip messages containing a longer word. 0 = off.", min=0),
     _field("Filters", "filters.block_repeated_messages", "bool", False,
@@ -112,19 +126,24 @@ CONFIG_SCHEMA = [
            "Skip a message once several chatters sent the exact same text "
            "within the window."),
     _field("Filters", "filters.copypasta_flood_window_seconds", "float", 20,
-           "Copypasta window (s)", min=0),
+           "Copypasta window (s)", min=0,
+           depends="filters.block_copypasta_flood"),
     _field("Filters", "filters.copypasta_flood_min_users", "int", 3,
-           "Copypasta: minimum chatters", min=2),
+           "Copypasta: minimum chatters", min=2,
+           depends="filters.block_copypasta_flood"),
 
     _field("Firebot actions", "firebot_actions.enabled", "bool", False, "Enabled",
            "Run a Firebot Preset Effect List when a filter fires."),
     _field("Firebot actions", "firebot_actions.api_base", "str", "http://localhost:7472",
-           "Firebot API base"),
+           "Firebot API base",
+           depends="firebot_actions.enabled"),
     _field("Firebot actions", "firebot_actions.async", "bool", True, "Don't wait for effects",
-           "Fire and forget (recommended)."),
+           "Fire and forget (recommended).",
+           depends="firebot_actions.enabled"),
     *[_field("Firebot actions", f"firebot_actions.presets.{name}", "str", "",
-             f"Preset: {name}", "Preset Effect List ID. Empty = no action.")
-      for name in FIREBOT_FILTERS],
+             f"On {label}", "Preset Effect List ID to run. Empty = no action.",
+             depends="firebot_actions.enabled")
+      for name, label in FIREBOT_FILTERS.items()],
 
     _field("Server", "http_host", "str", "127.0.0.1", "HTTP host",
            "Address the local server (this panel, /tts, /skip, /clear) listens on.",

@@ -135,3 +135,14 @@ def test_every_setting_round_trips_through_the_example_config():
     out = update_config_text(raw, values)
     reread, warnings = resolve_config(json.loads(strip_comments(out)))
     assert warnings == [] and reread == values
+
+
+def test_depends_points_to_an_earlier_switch():
+    # The panel nests a dependent field under its switch, so the switch must
+    # be a bool field in the same section that comes before it.
+    for i, f in enumerate(CONFIG_SCHEMA):
+        if "depends" in f:
+            parent = SCHEMA_BY_KEY[f["depends"]]
+            assert parent["type"] == "bool", f["key"]
+            assert parent["section"] == f["section"], f["key"]
+            assert CONFIG_SCHEMA.index(parent) < i, f["key"]
