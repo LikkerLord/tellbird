@@ -14,6 +14,7 @@ from pathlib import Path
 FROZEN = getattr(sys, "frozen", False)
 PACKAGE_DIR = Path(__file__).resolve().parent
 SOURCE_ROOT = PACKAGE_DIR.parent
+ICON_PATH = PACKAGE_DIR / "assets" / "icon.png"
 
 
 @dataclass

@@ -136,3 +136,12 @@ def test_chat_message_goes_through_the_filter(make_bot):
         await bot.on_chat_message("nightbot", "Nightbot", "ignored", "")
         assert queued(bot) == ["Alice says: hi there."]
     with_client(make_bot, test)
+
+
+def test_panel_and_icon(make_bot):
+    async def test(client, bot):
+        r = await client.get("/")
+        assert r.status == 200 and "/icon.png" in await r.text()
+        r = await client.get("/icon.png")
+        assert r.status == 200 and r.content_type == "image/png"
+    with_client(make_bot, test)

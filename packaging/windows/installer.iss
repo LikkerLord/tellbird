@@ -17,6 +17,8 @@ OutputDir=Output
 OutputBaseFilename=Tellbird-{#AppVersion}-Setup
 Compression=lzma2
 SolidCompression=yes
+SetupIconFile=packaging\icons\tellbird.ico
+UninstallDisplayIcon={app}\tellbird.exe
 
 [Files]
 Source: "dist\tellbird\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs

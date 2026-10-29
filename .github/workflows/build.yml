@@ -179,14 +179,7 @@ jobs:
           Icon=tellbird
           Categories=Utility;
           EOF
-          python -c "
-          from PIL import Image, ImageDraw
-          img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
-          d = ImageDraw.Draw(img)
-          d.ellipse((8, 8, 248, 248), fill=(88, 101, 242, 255))
-          d.text((100, 115), 'TTS', fill='white')
-          img.save('AppDir/tellbird.png')
-          "
+          cp tellbird/assets/icon.png AppDir/tellbird.png
           wget -q -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool
           version="${{ github.ref_name }}"

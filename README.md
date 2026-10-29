@@ -1,4 +1,6 @@
-# Tellbird
+<p align="center">
+  <img src="docs/logo-dark.png" alt="Tellbird - your chat, out loud" width="640">
+</p>
 
 Tellbird reads your Twitch chat aloud with a natural-sounding voice, ready to
 put on stream through OBS.

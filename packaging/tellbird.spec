@@ -44,6 +44,7 @@ datas += [
     (root("abbreviations.json"), "."),
     (root("emotes.json"), "."),
     (root("tellbird", "panel.html"), "tellbird"),
+    (root("tellbird", "assets", "icon.png"), os.path.join("tellbird", "assets")),
     (root("README.md"), "."),
 ]
 
@@ -65,6 +66,8 @@ exe = EXE(
     exclude_binaries=True,
     name="tellbird",
     console=False,              # tray app: no console window, tray icon instead
+    icon=root("packaging", "icons", "tellbird.ico" if sys.platform == "win32"
+              else "tellbird.icns"),
     disable_windowed_traceback=False,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="tellbird")
@@ -74,5 +77,6 @@ if sys.platform == "darwin":
         coll,
         name="Tellbird.app",
         bundle_identifier="org.tellbird.tellbird",
+        icon=root("packaging", "icons", "tellbird.icns"),
         info_plist={"CFBundleName": "Tellbird"},
     )

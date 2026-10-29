@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 from .config import ConfigError
+from .paths import ICON_PATH
 
 log = logging.getLogger("tellbird")
 
@@ -44,17 +45,8 @@ def open_path(path):
 
 
 def _icon_image():
-    """A small equalizer-bars glyph - reads as "audio" even shrunk to 16px,
-    unlike a letter which blurs into mush at tray-icon sizes."""
-    from PIL import Image, ImageDraw
-
-    size = 64
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle((2, 2, size - 3, size - 3), radius=16, fill=(88, 101, 242, 255))
-    for x, top, bottom in ((18, 24, 40), (30, 12, 52), (42, 24, 40)):
-        d.rounded_rectangle((x, top, x + 6, bottom), radius=3, fill="white")
-    return img
+    from PIL import Image
+    return Image.open(ICON_PATH)
 
 
 def panel_url(host, port):

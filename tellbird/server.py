@@ -8,6 +8,7 @@ import re
 from aiohttp import web
 
 from .config import ConfigError
+from .paths import ICON_PATH
 
 log = logging.getLogger("tellbird")
 
@@ -98,6 +99,9 @@ def create_app(bot):
     async def handle_panel(request):
         return web.FileResponse(bot.paths.panel_html)
 
+    async def handle_icon(request):
+        return web.FileResponse(ICON_PATH)
+
     async def handle_config_get(request):
         return web.json_response(bot.config_snapshot())
 
@@ -131,6 +135,7 @@ def create_app(bot):
     app.router.add_route("*", "/clear", handle_clear)
     app.router.add_get("/health", handle_health)
     app.router.add_get("/", handle_panel)
+    app.router.add_get("/icon.png", handle_icon)
     app.router.add_get("/api/config", handle_config_get)
     app.router.add_post("/api/config", handle_config_post)
     app.router.add_post("/api/reload", handle_reload)

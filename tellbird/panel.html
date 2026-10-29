@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tellbird control panel</title>
+<link rel="icon" type="image/png" href="/icon.png">
 <style>
   :root{
     --bg:#14161c; --panel:#1b1e26; --line:#2a2f3b;
@@ -28,6 +29,7 @@
   .lamp.busy{background:var(--amber); box-shadow:0 0 10px var(--amber);}
   .lamp.ok{background:var(--green); box-shadow:0 0 10px var(--green);}
   .lamp.err{background:var(--red); box-shadow:0 0 10px var(--red);}
+  header .logo{border-radius:7px; flex:none;}
   h1{font:600 17px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
      letter-spacing:.02em; margin:0;}
   h2{font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -122,8 +124,9 @@
 <body>
 <div class="console">
   <header>
-    <span class="lamp" id="lamp"></span>
+    <img class="logo" src="/icon.png" alt="" width="28" height="28">
     <h1>Tellbird control panel</h1>
+    <span class="lamp" id="lamp"></span>
   </header>
   <p class="sub" id="sub">Talks to your locally running bot.</p>
 
