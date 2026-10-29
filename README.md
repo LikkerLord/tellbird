@@ -7,9 +7,9 @@ one-time model download it runs fully offline.
 
 | File | Purpose |
 |---|---|
-| `tellbird.py` | The bot (same on every OS). |
+| `tellbird/` | The bot (same on every OS). |
 | `config.example.json` | Settings template. Setup copies this to `config.json` on first run - edit `config.json`, not this file. |
-| `panel.html` | The control panel the bot serves at http://127.0.0.1:5050/ (test speech, change settings). |
+| `tellbird/panel.html` | The control panel the bot serves at http://127.0.0.1:5050/ (test speech, change settings). |
 | `abbreviations.json` | Optional: chat shorthand -> spoken words. |
 | `emotes.json` | Optional: third-party emotes to skip. |
 
@@ -132,6 +132,36 @@ putting the username in the URL instead:
 
 ## Contributing / running from source
 
-Setup scripts above already run the bot from source - there's no separate
-install step to hack on the code, just edit `tellbird.py` and restart. See
-[`packaging/README.md`](packaging/README.md) for how release builds work.
+The setup scripts above already run the bot from source (`python -m tellbird`),
+so there's no separate install step: edit the code and restart.
+
+Code layout (`tellbird/`):
+
+| Module | What's in it |
+|---|---|
+| `app.py` | `Bot` (speech queue, config reload/save) and `main()` startup |
+| `config.py` | Settings schema, validation, comment-preserving `config.json` writer |
+| `textproc.py` | Chat message cleanup and the anti-abuse filters |
+| `audio.py` | Pocket TTS + playback - the only module that needs torch/PortAudio |
+| `twitch.py` | Twitch chat connection |
+| `server.py` | Local HTTP server: panel, `/tts`, `/skip`, `/clear`, settings API |
+| `tray.py` | System-tray icon |
+| `paths.py`, `logs.py` | Where config/log files live, logging setup |
+| `firebot.py` | Firebot actions when a filter fires |
+
+To add a setting, add it to `CONFIG_SCHEMA` in `config.py` (and document it
+in `config.example.json`); the panel picks it up automatically and the code
+reads it as `bot.settings["your.key"]`.
+
+Tests and lint (no torch needed, takes seconds):
+
+```
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest
+.venv/bin/ruff check .
+```
+
+CI runs both on every push. See [`packaging/README.md`](packaging/README.md)
+for how release builds work and `constraints.txt` for the pinned versions
+they use.

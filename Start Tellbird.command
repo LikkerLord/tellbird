@@ -1,6 +1,6 @@
 #!/bin/bash
 # Double-click launcher for Tellbird on macOS.
-# Put this file next to tellbird.py. On first use you may need to make it
+# Put this file next to the tellbird folder. On first use you may need to make it
 # executable once:  chmod +x "Start Tellbird.command"
 # macOS opens .command files in Terminal on double-click.
 
@@ -14,4 +14,4 @@ elif [ -f "$HOME/tts-bot/bin/activate" ]; then
     source "$HOME/tts-bot/bin/activate"
 fi
 
-python3 tellbird.py
+python3 -m tellbird

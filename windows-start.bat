@@ -6,5 +6,5 @@ if exist "%USERPROFILE%\tellbird\Scripts\activate.bat" (
 ) else (
   call "%USERPROFILE%\tts-bot\Scripts\activate.bat"
 )
-python tellbird.py
+python -m tellbird
 pause

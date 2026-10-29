@@ -21,6 +21,8 @@ automatically by GitHub Actions.
 
 ## What it does under the hood
 - Installs **CPU-only PyTorch** (the default wheel bundles CUDA and is huge).
+- Installs the exact versions in `constraints.txt`, so builds are reproducible.
+  Bump them there (after testing from source) to upgrade a dependency.
 - Freezes the app with **PyInstaller** using `packaging/tellbird.spec`, built
   windowless (`console=False`) since the bot runs as a **system-tray app**:
   the tray menu (via `pystray`) has Open Tellbird panel (the control panel the
@@ -28,8 +30,9 @@ automatically by GitHub Actions.
   Open log folder, Skip current, Clear queue, and Quit. Set `"show_tray_icon": false` in `config.json` to run as a plain
   console app instead; it also falls back to console mode automatically if
   the tray backend can't start (e.g. headless Linux with no display).
-- Since there's no console window, all `print()` output goes to a log file
-  instead: `tellbird.log` next to `config.json` in the per-user folder below.
+- Since there's no console window, the log goes to a file instead:
+  `tellbird.log` next to `config.json` in the per-user folder below
+  (capped at ~1 MB, with two older files kept as `tellbird.log.1`/`.2`).
 - On first run the app copies `config.json` / `abbreviations.json` /
   `emotes.json` into a per-user folder so they stay editable:
   - Windows `%APPDATA%\tellbird`

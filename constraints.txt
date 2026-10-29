@@ -1,0 +1,14 @@
+# Exact versions for release builds (the CI uses -c constraints.txt), so a new
+# upstream release can't silently change or break an installer. These are the
+# versions last tested together. To upgrade: bump here, run the bot from
+# source with them, then tag a release.
+pocket-tts==3.1.0
+torch==2.14.0
+numpy==2.5.3
+sounddevice==0.5.6
+websockets==17.1
+aiohttp==3.14.3
+certifi==2026.7.22
+pystray==0.19.5
+pillow==12.3.0
+pyinstaller==6.22.3

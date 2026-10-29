@@ -1,0 +1,7 @@
+# For running the tests and linter. Deliberately NOT the full requirements.txt:
+# the tests never load the voice model, so they don't need torch/PortAudio.
+pytest
+ruff
+aiohttp
+websockets
+certifi

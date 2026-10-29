@@ -6,4 +6,4 @@ if [ -f "$HOME/tellbird/bin/activate" ]; then
 else
   source "$HOME/tts-bot/bin/activate"
 fi
-python tellbird.py
+python -m tellbird

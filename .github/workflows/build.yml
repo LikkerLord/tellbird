@@ -45,8 +45,8 @@ jobs:
       - name: Install dependencies (CPU-only torch keeps the size down)
         run: |
           python -m pip install --upgrade pip
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install pyinstaller -r requirements.txt
+          pip install torch -c constraints.txt --index-url https://download.pytorch.org/whl/cpu
+          pip install pyinstaller -r requirements.txt -c constraints.txt
 
       # PyGObject needs the system dev headers installed above; only Linux
       # needs it (pystray's Windows/macOS backends don't touch gi at all).
@@ -64,12 +64,7 @@ jobs:
       # needed here anymore either.
       - name: Freeze with PyInstaller
         shell: bash
-        run: |
-          if [ "${{ matrix.name }}" = "linux" ]; then
-            pyinstaller packaging/tellbird.spec --noconfirm
-          else
-            pyinstaller packaging/tellbird.spec --noconfirm
-          fi
+        run: pyinstaller packaging/tellbird.spec --noconfirm
 
       # -------- Windows: Inno Setup installer, then sign if a cert is configured --------
       - name: Windows installer

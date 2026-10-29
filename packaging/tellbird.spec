@@ -37,19 +37,19 @@ if sys.platform.startswith("linux"):
     ]
 
 # Editable defaults shipped inside the app (seeded to a user folder on first
-# run - see the frozen-app bootstrap in tellbird.py, which renames
+# run - see tellbird/paths.py, which renames
 # config.example.json -> config.json when it copies it out).
 datas += [
     (root("config.example.json"), "."),
     (root("abbreviations.json"), "."),
     (root("emotes.json"), "."),
-    (root("panel.html"), "."),
+    (root("tellbird", "panel.html"), "tellbird"),
     (root("README.md"), "."),
 ]
 
 a = Analysis(
-    [root("tellbird.py")],
-    pathex=[],
+    [root("tellbird", "__main__.py")],
+    pathex=[ROOT],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,

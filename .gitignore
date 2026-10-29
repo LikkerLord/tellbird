@@ -19,3 +19,7 @@ Thumbs.db
 
 # Bot log (source-run mode)
 tellbird.log
+
+# Dev tool caches
+.pytest_cache/
+.ruff_cache/

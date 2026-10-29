@@ -1,0 +1,24 @@
+# Tool configuration. Tellbird isn't installed as a package: the setup
+# scripts install requirements.txt and run `python -m tellbird` from here.
+[project]
+name = "tellbird"
+dynamic = ["version"]
+description = "Reads your Twitch chat aloud with a local text-to-speech voice."
+requires-python = ">=3.10"
+license = "MIT"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP"]
+ignore = [
+    "E741",   # "l" as a variable name
+    "B904",   # raise ... from err: the plain message is what users see
+    "UP031",  # %-formatting in a regex template
+]
