@@ -29,8 +29,7 @@
   //   Windows: "CABLE Input"        (install VB-CABLE)
   //   Linux  : a sink name, or null + OBS "Application Audio Capture"
   // null plays to the default output (OBS can grab it via Desktop Audio).
-  // List devices:
-  //   python -c "import sounddevice as sd; print(sd.query_devices())"
+  // The panel's Output device field lists the devices Tellbird can see.
   "output_device": null,
 
   // Speak the sender's name before the message.  --- TWITCH MODE ONLY ---
@@ -135,7 +134,7 @@
   },
 
   // Local HTTP server address for "http" mode (where Firebot, Mix It Up, etc.
-  // send text - see README.md's "Using http mode with Mix It Up" section).
+  // send text - see README.md's "Using Firebot, Mix It Up or another bot" section).
   "http_host": "127.0.0.1",
   "http_port": 5050,
 

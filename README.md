@@ -1,167 +1,147 @@
 # Tellbird
 
-Reads your Twitch chat aloud with a local text-to-speech voice. After a
-one-time model download it runs fully offline.
+Tellbird reads your Twitch chat aloud with a natural-sounding voice, ready to
+put on stream through OBS.
 
-## What's in this folder
+- **Runs on your own computer.** The voice is generated locally - no account,
+  no API key, no cloud service. After a one-time download it works offline.
+- **No login needed.** It just listens to your channel's public chat.
+- **Keeps chat spam in check:** skips commands and bots, removes links and
+  emotes, tames "aaaaaaaa" and copypasta floods.
+- **Works with Firebot, Mix It Up and Stream Deck** if you want more control
+  over what gets read.
 
-| File | Purpose |
-|---|---|
-| `tellbird/` | The bot (same on every OS). |
-| `config.example.json` | Settings template. Setup copies this to `config.json` on first run - edit `config.json`, not this file. |
-| `tellbird/panel.html` | The control panel the bot serves at http://127.0.0.1:5050/ (test speech, change settings). |
-| `abbreviations.json` | Optional: chat shorthand -> spoken words. |
-| `emotes.json` | Optional: third-party emotes to skip. |
+## Install
 
-| OS | Setup | Start |
+Download the file for your system from the
+[latest release](https://github.com/LikkerLord/tellbird/releases/latest):
+
+| System | File | How to install |
 |---|---|---|
-| macOS | `Setup.command` | `Start Tellbird.command` |
-| Windows | `windows-setup.bat` | `windows-start.bat` |
-| Linux | `linux-setup.sh` | `linux-start.sh` |
+| Windows | `Tellbird-<version>-Setup.exe` | Run it. If Windows SmartScreen warns, click **More info -> Run anyway**. |
+| macOS (Apple Silicon) | `Tellbird-macos.dmg` | Open it and drag Tellbird to Applications. If macOS says it can't be opened, right-click the app -> **Open**, or allow it under System Settings -> Privacy & Security -> **Open Anyway**. |
+| Linux | `Tellbird-<version>-x86_64.AppImage` | Make it executable (right-click -> Properties -> "Allow executing", or `chmod +x Tellbird-*.AppImage`) and double-click it. |
 
-## Requirements
+The warnings appear because the installers aren't code-signed yet; they're
+safe to skip for files downloaded from the link above.
 
-Python 3.10-3.14. The setup script looks for a suitable Python and tells
-you if none is found.
+## First start
 
-## First time
+1. **Start Tellbird.** The first start downloads the voice model, which takes
+   a few minutes - later starts are quick. A Tellbird icon appears in your
+   system tray (Windows: bottom right, maybe behind the `^` arrow; macOS: top
+   menu bar).
+2. **Open the control panel:** click the tray icon -> **Open Tellbird panel**,
+   or go to <http://127.0.0.1:5050/> in your browser.
+3. **Settings tab:** enter your **Twitch channel** name and click
+   **Save & apply**.
+4. **Test it:** type a line on the panel's **Test** tab and click **Speak**, or
+   write a message in your chat. You should hear it.
 
-- **macOS**: double-click `Setup.command`. If macOS blocks it (downloaded
-  file): right-click -> Open -> Open.
-- **Windows**: double-click `windows-setup.bat`. If SmartScreen warns:
-  "More info" -> "Run anyway".
-- **Linux**: run `./linux-setup.sh` in a terminal (or mark executable and
-  use "Run in Terminal"). You may need PortAudio (the script tells you).
+## Get the voice into OBS
 
-The setup installs everything, copies `config.example.json` to `config.json`,
-and pre-downloads the voice (a few minutes).
+**Easiest (all systems):** do nothing - Tellbird plays through your normal
+speakers and OBS picks it up with **Desktop Audio**. The downside: you hear
+it too, and so does anything else you capture from your desktop.
 
-## Audio into OBS (per OS)
+**Separate audio source (recommended):** send Tellbird to a virtual audio
+cable, then capture that cable in OBS on its own. This gives it its own
+volume slider and keeps it out of your headphones if you want.
 
-The bot plays to the device named in `config.json` (`"output_device"`).
+- **Windows:** install [VB-CABLE](https://vb-audio.com/Cable/). In the panel,
+  set **Output device** to `CABLE Input`. In OBS add an **Audio Input
+  Capture** source and pick **CABLE Output**.
+- **macOS:** install [BlackHole](https://existential.audio/blackhole/) (2ch).
+  Set **Output device** to `BlackHole 2ch`, and add an OBS **Audio Input
+  Capture** source on **BlackHole 2ch**.
+- **Linux (PipeWire):** leave the output device empty and add an OBS
+  **Application Audio Capture** source for Tellbird.
 
-- **macOS**: install [BlackHole](https://existential.audio/blackhole/), set
-  `output_device` to `"BlackHole 2ch"`, add OBS "Audio Input Capture" on
-  BlackHole 2ch.
-- **Windows**: install [VB-CABLE](https://vb-audio.com/Cable/), set
-  `output_device` to `"CABLE Input (VB-Audio Virtual Cable)"`, add OBS
-  "Audio Input Capture" on "CABLE Output".
-- **Linux**: easiest - leave `output_device` as `null` and add OBS
-  "Application Audio Capture" (PipeWire) on the python process; or create a
-  null sink (see `linux-setup.sh` output) and target it.
+The **Output device** field on the panel suggests the devices it finds; leave
+it empty for your system default.
 
-Simplest everywhere: leave `output_device` as `null` (plays to your normal
-output) and let OBS capture Desktop Audio - the downside is you hear the TTS
-too.
+## Everyday use
 
-## Every time
-
-- **macOS**: `Start Tellbird.command`
-- **Windows**: `windows-start.bat`
-- **Linux**: `./linux-start.sh`
-
-Then write a message in your chat to test. Close the window / Ctrl+C to stop.
+- **Skip** the current message or **clear** the whole queue from the tray
+  menu or the panel.
+- **Stream Deck / hotkeys:** any button that can open a URL works:
+  - `http://127.0.0.1:5050/skip` - stop the current message, play the next
+  - `http://127.0.0.1:5050/clear` - drop everything waiting and stop
+- **Quit** from the tray menu.
 
 ## Settings
 
-Open the control panel at http://127.0.0.1:5050/ (or "Open Tellbird panel" in
-the tray menu) and use the **Settings** tab. "Save & apply" writes your
-changes to `config.json` (comments and layout are kept) and applies them
-right away. A few settings (`mode`, `language`, `http_host`, `http_port`,
-`show_tray_icon`) are marked *restart* and only take effect after restarting
-the bot. The same tab edits `abbreviations.json` and `emotes.json`.
+Everything is on the panel's **Settings** tab, with an explanation next to
+each option. **Save & apply** takes effect immediately; the few settings
+marked *restart* need Tellbird to be restarted. Highlights:
 
-You can still edit `config.json` by hand (annotated; `//` lines are
-comments): save it, then click "Reload from file" on the panel or "Reload
-config" in the tray menu. No restart needed.
+- **Voice** - pick one of the built-in voices (alba, anna, michael, vera,
+  jane, eve, george, mary, paul, charles).
+- **Read username** / **Username format** - "Alice says: hello" or just
+  "hello".
+- **Ignored users** - bots like Nightbot and StreamElements are skipped by
+  default; add your own.
+- **Per-user cooldown** - limit how often one person gets read.
+- **Filters** - collapse "aaaaaa", "lol lol lol lol", repeated phrases; skip
+  word spam, very long words, repeated messages and copypasta floods.
+- **Abbreviations** - teach it chat slang ("brb" -> "be right back").
+- **Emotes** - names of BTTV/FFZ/7TV emotes to leave out (Twitch's own emotes
+  are removed automatically).
 
-- `mode` - `"twitch"` (read chat) or `"http"` (Firebot, Mix It Up, or anything
-  else sends text)
-- `voice` - built-in voice (alba, anna, michael, vera, jane, ...)
-- `output_device` - see "Audio into OBS" above
-- `filters` - optional anti-abuse filters (repeated chars/words/phrases,
-  word spam, cross-user copypasta floods)
-- `firebot_actions` - optional: run a Firebot preset when a filter fires
-- `show_tray_icon` - true (default): also show a system-tray icon with
-  Open Tellbird panel / Reload config / Open config folder / Open log folder /
-  Skip / Clear / Quit
+Your settings are stored in `config.json` in Tellbird's settings folder (tray
+menu -> **Open config folder**). You can edit that file by hand too - lines
+starting with `//` are comments - then click **Reload from file** on the panel.
 
-## Control (works in both modes)
+## Using Firebot, Mix It Up or another bot
 
-A small local server always runs. Trigger from a browser, Stream Deck, or a
-Firebot HTTP Request effect:
+Instead of reading chat itself, Tellbird can speak only what another bot
+sends it - handy if that bot already decides what should be read (channel
+point redeems, a `!tts` command, ...). Set **Mode** to `http` on the panel
+and restart Tellbird. Your bot then sends text to `http://127.0.0.1:5050/tts`:
 
-- `http://127.0.0.1:5050/skip` - stop the current message, play the next
-- `http://127.0.0.1:5050/clear` - drop the whole queue and stop the current
-- `http://127.0.0.1:5050/tts` - speak text (`"http"` mode), see below
+- **Firebot:** an **HTTP Request** effect pointed at that URL. Sending the
+  text as a plain-text body with the username in the URL, as in the Mix It
+  Up example below, avoids any problems with special characters.
+- **Mix It Up:** an **HTTP Custom Request** action with
+  - Method: `POST`
+  - URL: `http://127.0.0.1:5050/tts?user=$username`
+  - Body: `$message`
+  - Content Type: `text/plain`
 
-### Using "http" mode with Mix It Up (or Firebot, or anything else)
+  Send the message as plain text like this rather than as JSON: Mix It Up
+  doesn't escape quotes, so a chat message containing `"` would break a JSON
+  body and silently not be read.
 
-In `"http"` mode, `/tts` speaks whatever text it's given instead of reading
-Twitch chat directly - useful if you'd rather route messages through a bot
-you're already running (filters, moderation, commands) and just have it hand
-the final text to this one for voicing.
+Other tools can also `POST` JSON (`{"user": "...", "text": "..."}`) or a form
+(`user=...&text=...`).
 
-`/tts` accepts:
-- `GET /tts?user=<name>&text=<message>`
-- `POST` with a JSON body: `{"user": "...", "text": "..."}`
-- `POST` with a form body: `user=...&text=...`
-- `POST` with any other body: the raw bytes are spoken as-is, with the
-  username (optional) passed as `?user=` in the URL instead.
+**Firebot reactions to filters:** Tellbird can also *trigger* Firebot when a
+filter catches spam - e.g. to time someone out. See **Firebot actions** on
+the Settings tab.
 
-That last form exists because some bots can't escape the message text for
-you. **Mix It Up**'s "HTTP Custom Request" action builds the request body by
-substituting `$message` straight into whatever template you type, with no
-quote/backslash/newline escaping - so a chat message containing a `"` breaks
-a JSON body, and the command silently fails to speak. Avoid that entirely by
-sending the raw message as the POST body (no JSON, no escaping needed) and
-putting the username in the URL instead:
+## Troubleshooting
 
-- Command: **HTTP Custom Request**
-- Method: `POST`
-- URL: `http://127.0.0.1:5050/tts?user=$username`
-- Body: `$message`
-- Content Type: `text/plain` (anything other than
-  `application/json`/`application/x-www-form-urlencoded` works)
+- **Nothing is read:** check the panel's channel name (no `#`). Messages
+  starting with `!` and messages from ignored users are skipped on purpose.
+- **No sound / wrong device:** clear the **Output device** field to use your
+  default speakers and test again from the panel.
+- **The last word gets cut off:** raise **Tail padding** in the settings.
+- **No tray icon on Linux (GNOME):** install the "AppIndicator and KStatusNotifierItem
+  Support" extension, or just use the panel at <http://127.0.0.1:5050/>.
+- **No sound on Linux:** install PortAudio (`sudo apt install libportaudio2`
+  or `sudo dnf install portaudio`).
+- **Something else:** the log file shows what's going on - tray menu ->
+  **Open log folder** -> `tellbird.log`. Please include it when you
+  [report a problem](https://github.com/LikkerLord/tellbird/issues).
 
-## Notes
+Settings folder locations, if you need them without the tray:
+Windows `%APPDATA%\tellbird`, macOS `~/Library/Application Support/tellbird`,
+Linux `~/.config/tellbird`.
 
-- Everything runs locally/offline after the first model download.
-- If audio endings sound clipped, raise `tail_padding_seconds` in
-  `config.json`.
+## Running from source / contributing
 
-## Contributing / running from source
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The setup scripts above already run the bot from source (`python -m tellbird`),
-so there's no separate install step: edit the code and restart.
+## License
 
-Code layout (`tellbird/`):
-
-| Module | What's in it |
-|---|---|
-| `app.py` | `Bot` (speech queue, config reload/save) and `main()` startup |
-| `config.py` | Settings schema, validation, comment-preserving `config.json` writer |
-| `textproc.py` | Chat message cleanup and the anti-abuse filters |
-| `audio.py` | Pocket TTS + playback - the only module that needs torch/PortAudio |
-| `twitch.py` | Twitch chat connection |
-| `server.py` | Local HTTP server: panel, `/tts`, `/skip`, `/clear`, settings API |
-| `tray.py` | System-tray icon |
-| `paths.py`, `logs.py` | Where config/log files live, logging setup |
-| `firebot.py` | Firebot actions when a filter fires |
-
-To add a setting, add it to `CONFIG_SCHEMA` in `config.py` (and document it
-in `config.example.json`); the panel picks it up automatically and the code
-reads it as `bot.settings["your.key"]`.
-
-Tests and lint (no torch needed, takes seconds):
-
-```
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest
-.venv/bin/ruff check .
-```
-
-CI runs both on every push. See [`packaging/README.md`](packaging/README.md)
-for how release builds work and `constraints.txt` for the pinned versions
-they use.
+MIT - see [LICENSE](LICENSE).
