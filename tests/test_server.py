@@ -52,13 +52,12 @@ def test_tts_skips_ignored_and_empty(make_bot):
     with_client(make_bot, test)
 
 
-def test_skip_and_clear(make_bot):
+def test_clear_endpoint(make_bot):
     async def test(client, bot):
         await bot.enqueue("one")
         await bot.enqueue("two")
         assert await (await client.get("/clear")).text() == "cleared 2"
-        await client.get("/skip")
-        assert bot.speaker.stops == 2
+        assert (await client.get("/skip")).status == 200     # nothing playing: harmless
         assert len(bot.queue) == 0
     with_client(make_bot, test)
 
@@ -166,29 +165,62 @@ def test_queue_monitor(make_bot):
     with_client(make_bot, test)
 
 
+async def wait_for(condition, timeout=2.0):
+    import asyncio
+    for _ in range(int(timeout / 0.01)):
+        if condition():
+            return
+        await asyncio.sleep(0.01)
+    raise AssertionError("timed out")
+
+
+def playing_until_cancelled(bot):
+    """Make the fake speaker 'play' each message until it's skipped."""
+    started = []
+
+    def speak(text, pad, cancel):
+        started.append(text)
+        cancel.wait(5)
+    bot.speaker.speak_blocking = speak
+    return started
+
+
 def test_worker_reports_what_is_playing(make_bot):
     import asyncio
-    import threading
 
     async def test(client, bot):
-        gate = threading.Event()
-        bot.speaker.speak_blocking = lambda text, pad: gate.wait(5)
+        started = playing_until_cancelled(bot)
         await bot.enqueue("one")
         await bot.enqueue("two")
         worker = asyncio.create_task(bot.speech_worker())
-        for _ in range(100):
-            if bot.current:
-                break
-            await asyncio.sleep(0.01)
+        await wait_for(lambda: bot.current)
         snap = bot.queue_snapshot()
         assert snap["current"]["spoken"] == "one" and snap["current"]["started_at"] > 0
         assert [q["spoken"] for q in snap["queued"]] == ["two"]
-        assert await bot.clear() == 1
-        gate.set()
-        for _ in range(100):
-            if bot.current is None:
-                break
-            await asyncio.sleep(0.01)
-        assert bot.queue_snapshot()["current"] is None
+        assert await bot.clear() == 1                 # drops "two", cancels "one"
+        await wait_for(lambda: bot.current is None)
+        assert started == ["one"]
+        worker.cancel()
+    with_client(make_bot, test)
+
+
+def test_rapid_skips_never_stall_the_queue(make_bot):
+    # Regression: skipping several messages quickly used to leave the worker
+    # hanging on one message forever, so nothing after it was spoken.
+    import asyncio
+
+    async def test(client, bot):
+        started = playing_until_cancelled(bot)
+        for i in range(5):
+            await bot.enqueue(f"m{i}")
+        worker = asyncio.create_task(bot.speech_worker())
+        for i in range(5):
+            await wait_for(lambda i=i: bot.current and bot.current.spoken == f"m{i}")
+            assert (await client.get("/skip")).status == 200
+        await wait_for(lambda: bot.current is None and len(bot.queue) == 0)
+        assert started == [f"m{i}" for i in range(5)]
+        await bot.enqueue("after")                    # the queue still works
+        await wait_for(lambda: "after" in started)
+        bot.skip()
         worker.cancel()
     with_client(make_bot, test)

@@ -17,7 +17,6 @@ class FakeSpeaker:
         self.output_device = None
         self.loaded = []
         self.spoken = []
-        self.stops = 0
 
     def load_voice(self, name):
         # Like the real Speaker: unknown names fail, known ones are cached.
@@ -34,11 +33,8 @@ class FakeSpeaker:
     def set_output_device(self, device):
         self.output_device = device
 
-    def speak_blocking(self, text, tail_padding_seconds):
+    def speak_blocking(self, text, tail_padding_seconds, cancel):
         self.spoken.append(text)
-
-    def stop(self):
-        self.stops += 1
 
 
 class FakeAudio:

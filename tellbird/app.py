@@ -67,7 +67,7 @@ class Bot:
             self.current, self.current_started = item, time.time()
             try:
                 await loop.run_in_executor(None, self.speaker.speak_blocking, item.spoken,
-                                           self.settings["tail_padding_seconds"])
+                                           self.settings["tail_padding_seconds"], item.cancel)
             except Exception as e:
                 log.error(f"[TTS error] {e}")
             finally:
@@ -75,12 +75,14 @@ class Bot:
 
     def skip(self):
         """Abort the current message; the worker moves on to the next."""
-        self.speaker.stop()
+        current = self.current
+        if current:
+            current.cancel.set()
 
     async def clear(self):
         """Drop everything queued and abort the current message. Returns count dropped."""
         dropped = self.queue.clear()
-        self.speaker.stop()
+        self.skip()
         return dropped
 
     def remove_queued(self, item_id):

@@ -3,9 +3,10 @@ listed and have single items removed, for the panel's queue monitor."""
 
 import asyncio
 import itertools
+import threading
 import time
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 _ids = itertools.count(1)
 
@@ -18,9 +19,13 @@ class QueueItem:
     source: str = ""         # "chat" or "http"
     id: int = field(default_factory=lambda: next(_ids))
     queued_at: float = field(default_factory=time.time)
+    # Set to skip this message, from any thread, whether it's still being
+    # generated or already playing.
+    cancel: threading.Event = field(default_factory=threading.Event, repr=False, compare=False)
 
     def as_dict(self):
-        return asdict(self)
+        return {k: getattr(self, k) for k in
+                ("id", "spoken", "message", "user", "source", "queued_at")}
 
 
 class SpeechQueue:

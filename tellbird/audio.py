@@ -4,6 +4,8 @@ This is the only module that pulls in torch and PortAudio; everything else
 (and the tests) can be imported without them."""
 
 import logging
+import threading
+import time
 
 import numpy as np
 import sounddevice as sd
@@ -37,6 +39,42 @@ def resample_linear(data, orig_rate, target_rate):
     x_orig = np.linspace(0, duration, num=len(data), endpoint=False)
     x_target = np.linspace(0, duration, num=n_target, endpoint=False)
     return np.interp(x_target, x_orig, data).astype("float32")
+
+
+def play_blocking(data, rate, device, cancel):
+    """Play mono float32 `data` and return when it's done, or soon after
+    `cancel` (a threading.Event) is set from any thread.
+
+    Deliberately not sd.play()/sd.stop()/sd.wait(): those share global state,
+    and a stop() from another thread that races a stream starting up can lose
+    the "finished" signal, leaving sd.wait() blocked forever (the queue then
+    hangs on that message). Here only this thread touches the stream; skipping
+    just sets `cancel`, which the audio callback and the wait loop both check,
+    and the wait is capped so nothing can block indefinitely."""
+    if cancel.is_set() or len(data) == 0:
+        return
+    pos = 0
+    done = threading.Event()
+
+    def callback(outdata, frames, time_info, status):
+        nonlocal pos
+        if cancel.is_set():
+            outdata.fill(0)
+            raise sd.CallbackAbort
+        chunk = data[pos:pos + frames]
+        outdata[:len(chunk), 0] = chunk
+        outdata[len(chunk):] = 0
+        pos += len(chunk)
+        if pos >= len(data):
+            raise sd.CallbackStop
+
+    deadline = time.monotonic() + len(data) / rate + 5
+    with sd.OutputStream(samplerate=rate, device=device, channels=1, dtype="float32",
+                         callback=callback, finished_callback=done.set) as stream:
+        while not done.wait(0.1):
+            if cancel.is_set() or time.monotonic() > deadline:
+                stream.abort()
+                break
 
 
 class Speaker:
@@ -98,17 +136,16 @@ class Speaker:
         except Exception:
             return self.sample_rate
 
-    def speak_blocking(self, text, tail_padding_seconds):
+    def speak_blocking(self, text, tail_padding_seconds, cancel):
+        """Generate and play `text`; returns early once `cancel` is set
+        (also when that happens while the audio is still being generated)."""
         audio = self._model.generate_audio(self._voice_state, text)
+        if cancel.is_set():
+            return
         data = np.clip(audio.numpy(), -1.0, 1.0).astype("float32")
         pad = np.zeros(int(self.sample_rate * tail_padding_seconds), dtype="float32")
         data = np.concatenate([data, pad])
         rate = self._playback_rate
         if rate != self.sample_rate:
             data = resample_linear(data, self.sample_rate, rate)
-        sd.play(data, samplerate=rate, device=self.output_device)
-        sd.wait()
-
-    def stop(self):
-        """Abort whatever is playing right now."""
-        sd.stop()
+        play_blocking(data, rate, self.output_device, cancel)
