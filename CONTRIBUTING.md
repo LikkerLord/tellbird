@@ -22,6 +22,7 @@ settings folder, and the log goes to the console only.
 |---|---|
 | `tellbird/app.py` | `Bot` (speech queue, config reload/save) and `main()` startup |
 | `tellbird/config.py` | Settings schema, validation, comment-preserving `config.json` writer |
+| `tellbird/speechqueue.py` | The queue of messages waiting to be spoken |
 | `tellbird/textproc.py` | Chat message cleanup and the anti-abuse filters |
 | `tellbird/audio.py` | Pocket TTS + playback - the only module that needs torch/PortAudio |
 | `tellbird/twitch.py` | Twitch chat connection |

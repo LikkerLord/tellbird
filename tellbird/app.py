@@ -4,10 +4,12 @@ startup (tray app or plain console)."""
 import asyncio
 import logging
 import threading
+import time
 
 from . import firebot
 from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, ConfigError, RunningConfig,
                      coerce, read_config_file, read_word_lists, write_config, write_json)
+from .speechqueue import QueueItem, SpeechQueue
 from .textproc import ChatFilter, WordLists
 
 log = logging.getLogger("tellbird")
@@ -31,7 +33,9 @@ class Bot:
         self.chat_filter = ChatFilter(self.settings, self.word_lists, on_filter=self._on_filter)
         speaker.set_voice(self.settings["voice"])
         speaker.set_output_device(self.settings["output_device"])
-        self.queue: asyncio.Queue = asyncio.Queue()
+        self.queue = SpeechQueue()
+        self.current = None            # the QueueItem being spoken right now
+        self.current_started = 0.0
         self.loop: asyncio.AbstractEventLoop | None = None   # set by run(); used by the tray
         self.twitch = None
         self._reload_lock = asyncio.Lock()
@@ -40,8 +44,10 @@ class Bot:
         firebot.fire(self.settings, filter_name, user, text)
 
     # ------------------------------ Speaking ---------------------------------
-    async def enqueue(self, text):
-        await self.queue.put(text)
+    async def enqueue(self, spoken, message="", user="", source=""):
+        item = QueueItem(spoken, message or spoken, user, source)
+        self.queue.put(item)
+        return item
 
     async def on_chat_message(self, login, display, message, emotes_tag):
         from .textproc import strip_native_emotes
@@ -51,19 +57,21 @@ class Bot:
         if not cleaned:
             return
         log.info(f"{display}: {cleaned}")
-        await self.enqueue(self.chat_filter.build_spoken(display, cleaned))
+        spoken = self.chat_filter.build_spoken(display, cleaned)
+        await self.enqueue(spoken, cleaned, display, "chat")
 
     async def speech_worker(self):
         loop = asyncio.get_running_loop()
         while True:
-            text = await self.queue.get()
+            item = await self.queue.get()
+            self.current, self.current_started = item, time.time()
             try:
-                await loop.run_in_executor(None, self.speaker.speak_blocking, text,
+                await loop.run_in_executor(None, self.speaker.speak_blocking, item.spoken,
                                            self.settings["tail_padding_seconds"])
             except Exception as e:
                 log.error(f"[TTS error] {e}")
             finally:
-                self.queue.task_done()
+                self.current = None
 
     def skip(self):
         """Abort the current message; the worker moves on to the next."""
@@ -71,16 +79,23 @@ class Bot:
 
     async def clear(self):
         """Drop everything queued and abort the current message. Returns count dropped."""
-        dropped = 0
-        while True:
-            try:
-                self.queue.get_nowait()
-            except asyncio.QueueEmpty:
-                break
-            self.queue.task_done()
-            dropped += 1
+        dropped = self.queue.clear()
         self.speaker.stop()
         return dropped
+
+    def remove_queued(self, item_id):
+        """Drop one waiting message; False if it's already gone (or playing)."""
+        return self.queue.remove(item_id)
+
+    def queue_snapshot(self):
+        """What's being spoken and what's waiting, for the panel's queue monitor.
+        `now` lets the page work out ages without trusting its own clock."""
+        current = self.current
+        return {
+            "now": time.time(),
+            "current": current and {**current.as_dict(), "started_at": self.current_started},
+            "queued": [item.as_dict() for item in self.queue.items()],
+        }
 
     # --------------------------- Config reload/save ---------------------------
     async def reload_config(self):

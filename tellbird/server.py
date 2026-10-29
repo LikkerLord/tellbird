@@ -71,7 +71,8 @@ def create_app(bot):
 
     async def handle_tts(request):
         user, text = await _read_tts_request(request)
-        user = str(user).strip().lower()
+        display = str(user).strip()
+        user = display.lower()                    # filters/cooldowns are case-insensitive
         text = str(text).strip()
         if not text or bot.chat_filter.should_skip(user, text):
             return web.Response(status=204)
@@ -79,7 +80,7 @@ def create_app(bot):
         if not cleaned:
             return web.Response(status=204)
         log.info(f"[http] {cleaned}")
-        await bot.enqueue(cleaned)      # speak the text as-is, no name prefix
+        await bot.enqueue(cleaned, user=display, source="http")   # spoken as-is, no name prefix
         return web.Response(text="ok")
 
     async def handle_skip(request):
@@ -123,6 +124,19 @@ def create_app(bot):
             return web.json_response({"error": str(e)}, status=500)
         return web.json_response(result)
 
+    async def handle_queue(request):
+        return web.json_response(bot.queue_snapshot())
+
+    async def handle_queue_remove(request):
+        try:
+            item_id = int(request.match_info["id"])
+        except ValueError:
+            raise web.HTTPNotFound()
+        if not bot.remove_queued(item_id):
+            return web.json_response({"error": "not in the queue (already spoken?)"}, status=404)
+        log.info(f"[queue] removed message #{item_id}")
+        return web.json_response({"removed": item_id})
+
     async def handle_reload(request):
         try:
             return web.json_response(await bot.reload_config())
@@ -139,6 +153,8 @@ def create_app(bot):
     app.router.add_get("/api/config", handle_config_get)
     app.router.add_post("/api/config", handle_config_post)
     app.router.add_post("/api/reload", handle_reload)
+    app.router.add_get("/api/queue", handle_queue)
+    app.router.add_delete("/api/queue/{id}", handle_queue_remove)
     return app
 
 

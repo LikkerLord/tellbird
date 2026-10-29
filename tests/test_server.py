@@ -16,10 +16,7 @@ def with_client(make_bot, test):
 
 
 def queued(bot):
-    items = []
-    while not bot.queue.empty():
-        items.append(bot.queue.get_nowait())
-    return items
+    return [item.spoken for item in bot.queue.items()]
 
 
 def test_tts_request_shapes(make_bot):
@@ -62,7 +59,7 @@ def test_skip_and_clear(make_bot):
         assert await (await client.get("/clear")).text() == "cleared 2"
         await client.get("/skip")
         assert bot.speaker.stops == 2
-        assert bot.queue.empty()
+        assert len(bot.queue) == 0
     with_client(make_bot, test)
 
 
@@ -144,4 +141,54 @@ def test_panel_and_icon(make_bot):
         assert r.status == 200 and "/icon.png" in await r.text()
         r = await client.get("/icon.png")
         assert r.status == 200 and r.content_type == "image/png"
+    with_client(make_bot, test)
+
+
+def test_queue_monitor(make_bot):
+    async def test(client, bot):
+        await client.get("/tts", params={"user": "Alice", "text": "first one"})
+        await bot.on_chat_message("bob", "Bob", "second one", "")
+        snap = await (await client.get("/api/queue")).json()
+        assert snap["current"] is None
+        assert [(q["user"], q["message"], q["source"]) for q in snap["queued"]] == [
+            ("Alice", "first one.", "http"), ("Bob", "second one.", "chat")]
+        assert snap["queued"][1]["spoken"] == "Bob says: second one."
+        assert snap["now"] >= snap["queued"][0]["queued_at"]
+
+        first = snap["queued"][0]["id"]
+        assert (await client.delete(f"/api/queue/{first}")).status == 200
+        assert (await client.delete(f"/api/queue/{first}")).status == 404
+        assert (await client.delete("/api/queue/nope")).status == 404
+        assert queued(bot) == ["Bob says: second one."]
+
+        r = await client.get("/api/queue", headers={"Origin": "https://evil.example"})
+        assert r.status == 403                      # chat messages stay local
+    with_client(make_bot, test)
+
+
+def test_worker_reports_what_is_playing(make_bot):
+    import asyncio
+    import threading
+
+    async def test(client, bot):
+        gate = threading.Event()
+        bot.speaker.speak_blocking = lambda text, pad: gate.wait(5)
+        await bot.enqueue("one")
+        await bot.enqueue("two")
+        worker = asyncio.create_task(bot.speech_worker())
+        for _ in range(100):
+            if bot.current:
+                break
+            await asyncio.sleep(0.01)
+        snap = bot.queue_snapshot()
+        assert snap["current"]["spoken"] == "one" and snap["current"]["started_at"] > 0
+        assert [q["spoken"] for q in snap["queued"]] == ["two"]
+        assert await bot.clear() == 1
+        gate.set()
+        for _ in range(100):
+            if bot.current is None:
+                break
+            await asyncio.sleep(0.01)
+        assert bot.queue_snapshot()["current"] is None
+        worker.cancel()
     with_client(make_bot, test)

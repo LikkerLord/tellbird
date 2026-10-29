@@ -64,6 +64,9 @@ it empty for your system default.
 
 ## Everyday use
 
+- **Watch the queue:** the panel's **Speak** tab shows what's being read
+  right now and every message waiting, live. Remove a single message with its
+  **×** button.
 - **Skip** the current message or **clear** the whole queue from the tray
   menu or the panel.
 - **Stream Deck / hotkeys:** any button that can open a URL works:
