@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tellbird control panel</title>
+<style>
+  :root{
+    --bg:#14161c; --panel:#1b1e26; --line:#2a2f3b;
+    --ink:#e7e9f0; --muted:#8b93a7;
+    --amber:#e8a13a; --green:#57c98a; --red:#e5533f; --blue:#7d8cf5;
+    --radius:10px;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .lamp{transition:background .15s, box-shadow .15s;}
+    button{transition:border-color .12s, background .12s;}
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex; justify-content:center; padding:28px 16px 96px;
+  }
+  .console{width:100%; max-width:720px;}
+  header{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  .lamp{width:12px; height:12px; border-radius:50%; background:#444a58;
+        box-shadow:0 0 0 3px rgba(255,255,255,.03);}
+  .lamp.busy{background:var(--amber); box-shadow:0 0 10px var(--amber);}
+  .lamp.ok{background:var(--green); box-shadow:0 0 10px var(--green);}
+  .lamp.err{background:var(--red); box-shadow:0 0 10px var(--red);}
+  h1{font:600 17px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+     letter-spacing:.02em; margin:0;}
+  h2{font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+     letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 14px;}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 16px;}
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:18px;}
+  .tabs button{background:none; border:none; border-bottom:2px solid transparent;
+               border-radius:0; color:var(--muted); padding:10px 14px; margin-bottom:-1px;}
+  .tabs button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--amber);}
+  .tabs .count{display:inline-block; min-width:18px; padding:0 5px; margin-left:6px;
+               border-radius:9px; background:var(--amber); color:#1a1206;
+               font-size:11px; line-height:18px;}
+  [hidden]{display:none !important;}
+  .panel{background:var(--panel); border:1px solid var(--line);
+         border-radius:var(--radius); padding:16px; margin-bottom:14px;}
+  label, .label{display:block; color:var(--muted); font-size:12px; margin:0 0 6px;}
+  input, textarea, select{
+    width:100%; background:#0f1116; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    font:inherit; outline:none;
+  }
+  input:focus, textarea:focus, select:focus{border-color:var(--amber);}
+  textarea{resize:vertical; min-height:64px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .row > *{flex:1 1 auto;}
+  .grid2{display:grid; grid-template-columns:2fr 1fr; gap:10px;}
+  button{
+    background:#232733; color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:11px 14px; font:600 14px/1 inherit;
+    cursor:pointer;
+  }
+  button:hover{border-color:#3a4152;}
+  button:active{transform:translateY(1px);}
+  button:disabled{opacity:.45; cursor:default; transform:none;}
+  .speak, .primary{background:var(--amber); color:#1a1206; border-color:transparent;}
+  .speak{flex:2 1 220px;}
+  .stop{border-color:#5a2c26; color:#f0a99f;}
+  .ghost{background:transparent;}
+  .presets{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
+  .presets button{flex:1 1 120px; font-weight:500; font-size:13px; color:var(--muted);}
+  #log{
+    background:#0f1116; border:1px solid var(--line); border-radius:8px;
+    padding:12px; height:190px; overflow:auto;
+    font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  #log .ok{color:var(--green);}
+  #log .warn{color:var(--amber);}
+  #log .err{color:var(--red);}
+  #log .dim{color:var(--muted);}
+  .clearlog{background:none; border:none; color:var(--muted); font-size:12px;
+            cursor:pointer; padding:0; float:right;}
+
+  /* settings */
+  .banner{border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:13px;
+          border:1px solid var(--line); display:flex; gap:10px; align-items:center;}
+  .banner > span{flex:1;}
+  .banner.warn{border-color:#5c4520; background:#241d12; color:#f0c987;}
+  .banner.err{border-color:#5a2c26; background:#25150f; color:#f0a99f;}
+  .banner.info{border-color:#2f3666; background:#171a2c; color:#c3c9fb;}
+  .banner.ok{border-color:#24503a; background:#122019; color:#9fe0bd;}
+  .banner button{padding:7px 10px; font-size:13px;}
+  .field{padding:12px 0; border-top:1px solid var(--line);}
+  .field:first-of-type{border-top:none; padding-top:0;}
+  .field .head{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+  .field .head label{margin:0; color:var(--ink); font-size:14px; font-weight:500;}
+  .field .head .toggle{font-weight:400;}
+  .field .key{color:var(--muted); font:11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+              margin-left:auto;}
+  .field .help{color:var(--muted); font-size:12.5px; margin:6px 0 0;}
+  .field .error{color:var(--red); font-size:12.5px; margin:6px 0 0;}
+  .field.dirty .head label::after{content:"●"; color:var(--amber); margin-left:6px; font-size:10px;
+                                  vertical-align:middle;}
+  .field.invalid input, .field.invalid textarea, .field.invalid select{border-color:var(--red);}
+  .badge{font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; border-radius:4px;
+         padding:2px 6px; border:1px solid #5c4520; color:#f0c987;}
+  .toggle{display:flex; align-items:center; gap:10px; cursor:pointer; color:var(--ink);
+          font-size:14px; margin:0;}
+  .toggle input{width:18px; height:18px; accent-color:var(--amber); margin:0;}
+  .savebar{position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
+           padding:12px 16px; background:rgba(20,22,28,.94); border-top:1px solid var(--line);
+           backdrop-filter:blur(6px);}
+  .savebar .inner{width:100%; max-width:720px; display:flex; gap:10px; align-items:center;}
+  .savebar .inner span{flex:1; color:var(--muted); font-size:13px;}
+  code{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink);}
+  @media (max-width:520px){
+    .grid2{grid-template-columns:1fr;}
+    .field .key{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="console">
+  <header>
+    <span class="lamp" id="lamp"></span>
+    <h1>Tellbird control panel</h1>
+  </header>
+  <p class="sub" id="sub">Talks to your locally running bot.</p>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-test" aria-controls="view-test">Test</button>
+    <button role="tab" id="tab-settings" aria-controls="view-settings">Settings<span class="count" id="dirtyCount" hidden></span></button>
+  </nav>
+
+  <!-- ============================== Test ============================== -->
+  <section id="view-test" role="tabpanel">
+    <div class="panel">
+      <label for="text">Message to speak</label>
+      <textarea id="text" placeholder="Type something for the bot to read...">This is a test of Tellbird.</textarea>
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <label for="user">User (optional, only used for filtering)</label>
+          <input id="user" placeholder="e.g. likkerlord">
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button class="speak" id="speakBtn" style="width:100%;">Speak</button>
+        </div>
+      </div>
+      <div class="presets">
+        <button data-fill="nooooooo waaaaaay">char run</button>
+        <button data-fill="lol lol lol lol lol lol hi">word repeat</button>
+        <button data-fill="go team go team go team go team go team">phrase repeat</button>
+        <button data-fill="spam spam spam spam spam spam spam">word spam</button>
+        <button data-fill="This is a fairly long message that keeps going so you have time to hit skip while it is still being read out loud by the bot">long message</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <label>Transport</label>
+      <div class="row">
+        <button class="stop" id="skipBtn">Skip current</button>
+        <button class="stop" id="clearBtn">Clear queue</button>
+        <button class="ghost" id="pingBtn">Ping server</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <button class="clearlog" id="clearLogBtn">clear log</button>
+      <label>Response log</label>
+      <div id="log"></div>
+    </div>
+  </section>
+
+  <!-- ============================ Settings ============================ -->
+  <section id="view-settings" role="tabpanel" hidden>
+    <div id="banners"></div>
+    <div id="form"></div>
+  </section>
+</div>
+
+<div class="savebar" id="savebar" hidden>
+  <div class="inner">
+    <span id="saveStatus"></span>
+    <button class="ghost" id="reloadBtn" title="Re-read config.json, abbreviations.json and emotes.json from disk">Reload from file</button>
+    <button id="revertBtn">Revert</button>
+    <button class="primary" id="saveBtn">Save &amp; apply</button>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)){
+      if (k === 'class') n.className = v;
+      else if (k in n && k !== 'list') n[k] = v;
+      else n.setAttribute(k, v);
+    }
+    n.append(...kids.filter(k => k != null));
+    return n;
+  };
+  // Served by the bot itself; a copy opened from disk falls back to the default address.
+  const BASE = location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:5050';
+  const lamp = $('lamp');
+
+  function setLamp(state){
+    lamp.className = 'lamp' + (state ? ' ' + state : '');
+    if (state === 'ok' || state === 'err'){
+      setTimeout(() => { if (lamp.className.includes(state)) lamp.className = 'lamp'; }, 1200);
+    }
+  }
+
+  /* ------------------------------ tabs ------------------------------ */
+  function showTab(name){
+    for (const t of ['test', 'settings']){
+      $('tab-' + t).setAttribute('aria-selected', t === name);
+      $('view-' + t).hidden = t !== name;
+    }
+    $('savebar').hidden = name !== 'settings';
+    if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+    if (name === 'settings' && !state.loaded) loadConfig();
+  }
+  $('tab-test').onclick = () => showTab('test');
+  $('tab-settings').onclick = () => showTab('settings');
+
+  /* ------------------------------ test ------------------------------ */
+  function log(text, cls){
+    const line = el('div', {},
+      el('span', {class: 'dim'}, new Date().toLocaleTimeString()), '  ',
+      el('span', {class: cls || ''}, text));
+    $('log').prepend(line);
+  }
+
+  async function hit(path, opts){
+    setLamp('busy');
+    log(`→ ${path}`, 'dim');
+    try{
+      const r = await fetch(BASE + path, opts);
+      const body = (await r.text()) || '(empty)';
+      log(`${r.status}  ${body}`, r.ok ? 'ok' : 'warn');
+      setLamp(r.ok ? 'ok' : 'err');
+    }catch(e){
+      log(`unreachable — is the bot running? (${e.message})`, 'err');
+      setLamp('err');
+    }
+  }
+
+  function speak(){
+    const text = $('text').value.trim();
+    if(!text){ log('nothing to speak', 'warn'); return; }
+    const params = new URLSearchParams({ text });
+    const user = $('user').value.trim();
+    if(user) params.set('user', user);
+    hit('/tts?' + params.toString());
+  }
+
+  $('speakBtn').onclick = speak;
+  $('skipBtn').onclick = () => hit('/skip');
+  $('clearBtn').onclick = () => hit('/clear');
+  $('pingBtn').onclick = () => hit('/health');
+  $('clearLogBtn').onclick = () => { $('log').innerHTML = ''; };
+  document.querySelectorAll('.presets button').forEach(b => {
+    b.onclick = () => { $('text').value = b.dataset.fill; speak(); };
+  });
+  // Ctrl/Cmd+Enter in the textarea = speak
+  $('text').addEventListener('keydown', e => {
+    if((e.metaKey || e.ctrlKey) && e.key === 'Enter') speak();
+  });
+
+  /* ---------------------------- settings ---------------------------- */
+  const state = { loaded: false, snap: null, inputs: {}, errors: {} };
+  const WORD_LISTS = ['abbreviations', 'emotes'];
+
+  async function api(path, opts = {}){
+    const r = await fetch(BASE + path, {
+      ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+    });
+    let body = null;
+    try { body = await r.json(); } catch { /* non-JSON error */ }
+    return { ok: r.ok, status: r.status, body: body || {} };
+  }
+
+  async function loadConfig(){
+    setLamp('busy');
+    try{
+      const { ok, status, body } = await api('/api/config');
+      if (!ok) throw new Error(body.error || `HTTP ${status}`);
+      state.snap = body;
+      state.loaded = true;
+      state.errors = {};
+      render();
+      setLamp('ok');
+    }catch(e){
+      setLamp('err');
+      $('banners').replaceChildren(banner('err',
+        `Couldn't load settings (${e.message}). Is the bot running, and is this page opened from the bot's address (e.g. http://127.0.0.1:5050/)?`,
+        ['Retry', loadConfig]));
+    }
+  }
+
+  function banner(kind, text, action){
+    const b = el('div', {class: 'banner ' + kind}, el('span', {}, text));
+    if (action) b.append(el('button', {class: 'ghost', onclick: action[1]}, action[0]));
+    return b;
+  }
+
+  function renderBanners(extra){
+    const s = state.snap, out = [];
+    if (s.error) out.push(banner('err', `${s.error}. Fix the file by hand, then reload. Showing the running values.`,
+                                 ['Reload from file', reloadFromFile]));
+    if (s.unapplied && s.unapplied.length)
+      out.push(banner('info', `The files on disk have changes the bot isn't using yet: ${s.unapplied.join(', ')}.`,
+                      ['Reload from file', reloadFromFile]));
+    if (s.restart_pending && s.restart_pending.length)
+      out.push(banner('warn', `Saved, but only takes effect after restarting the bot: ${s.restart_pending.join(', ')}.`));
+    for (const w of (s.warnings || [])) out.push(banner('warn', w));
+    if (extra) out.push(extra);
+    $('banners').replaceChildren(...out);
+  }
+
+  function makeInput(f, value){
+    const id = 'f-' + f.key;
+    if (f.type === 'bool'){
+      const cb = el('input', {type: 'checkbox', id, checked: !!value});
+      return { node: el('label', {class: 'toggle'}, cb, f.label), get: () => cb.checked, set: v => cb.checked = !!v, focus: cb };
+    }
+    if (f.type === 'choice'){
+      const sel = el('select', {id}, ...f.choices.map(c => el('option', {value: c}, c)));
+      sel.value = value;
+      return { node: sel, get: () => sel.value, set: v => sel.value = v };
+    }
+    if (f.type === 'list'){
+      const ta = el('textarea', {id, rows: Math.min(8, Math.max(3, value.length + 1)), placeholder: 'one per line'});
+      ta.value = value.join('\n');
+      return { node: ta, get: () => ta.value.split('\n').map(s => s.trim()).filter(Boolean),
+               set: v => ta.value = v.join('\n') };
+    }
+    const inp = el('input', {id, type: (f.type === 'int' || f.type === 'float') ? 'number' : 'text'});
+    if (f.type === 'int') inp.step = '1';
+    if (f.type === 'float') inp.step = 'any';
+    if (f.min != null) inp.min = f.min;
+    if (f.max != null) inp.max = f.max;
+    if (f.type === 'nullable_str') inp.placeholder = 'system default';
+    if (f.suggest){
+      const listId = 'dl-' + f.suggest;
+      inp.setAttribute('list', listId);
+      if (!$(listId)) document.body.append(el('datalist', {id: listId},
+        ...(state.snap.suggest[f.suggest] || []).map(v => el('option', {value: v}))));
+    }
+    inp.value = value == null ? '' : value;
+    const get = () => {
+      const raw = inp.value.trim();
+      if (f.type === 'nullable_str') return raw || null;
+      if (f.type === 'int' || f.type === 'float') return raw === '' ? NaN : Number(raw);
+      return inp.value;
+    };
+    return { node: inp, get, set: v => inp.value = v == null ? '' : v };
+  }
+
+  function clientError(f, v){
+    if (f.type === 'int' && !Number.isInteger(v)) return 'must be a whole number';
+    if (f.type === 'float' && !Number.isFinite(v)) return 'must be a number';
+    if ((f.type === 'int' || f.type === 'float')){
+      if (f.min != null && v < f.min) return f.max != null ? `must be between ${f.min} and ${f.max}` : `must be at least ${f.min}`;
+      if (f.max != null && v > f.max) return `must be between ${f.min} and ${f.max}`;
+    }
+    return null;
+  }
+
+  // Word lists are edited as text: "abbr = expansion" lines / one emote per line.
+  const abbrToText = obj => Object.entries(obj).map(([k, v]) => `${k} = ${v}`).join('\n');
+  function textToAbbr(text){
+    const out = {};
+    for (const [i, line] of text.split('\n').entries()){
+      if (!line.trim()) continue;
+      const at = line.indexOf('=');
+      if (at < 1 || !line.slice(at + 1).trim()) throw new Error(`line ${i + 1}: use "abbreviation = expansion"`);
+      out[line.slice(0, at).trim()] = line.slice(at + 1).trim();
+    }
+    return out;
+  }
+
+  const inputKey = key => key.replace(/\.json$/, '');
+
+  function fieldBlock(key, label, inputObj, help, extra){
+    // Toggles carry their own label, so they sit in the header row itself.
+    const head = el('div', {class: 'head'}, label ? el('label', {htmlFor: inputObj.node.id || ''}, label)
+                                                  : inputObj.node);
+    if (extra) head.append(extra);
+    head.append(el('span', {class: 'key'}, key));
+    const block = el('div', {class: 'field', 'data-key': key}, head, label ? inputObj.node : null,
+                     help ? el('p', {class: 'help'}, help) : null,
+                     el('p', {class: 'error', hidden: true}));
+    // a server-side error stays until that field is edited again
+    const onChange = () => { delete state.errors[inputKey(key)]; updateDirty(); };
+    inputObj.node.addEventListener('input', onChange);
+    inputObj.node.addEventListener('change', onChange);
+    return block;
+  }
+
+  function render(){
+    const s = state.snap;
+    state.inputs = {};
+    const sections = new Map();
+    for (const f of s.schema){
+      if (!sections.has(f.section)) sections.set(f.section, []);
+      sections.get(f.section).push(f);
+    }
+    const panels = [];
+    for (const [name, fields] of sections){
+      const panel = el('div', {class: 'panel'}, el('h2', {}, name));
+      for (const f of fields){
+        const inp = makeInput(f, s.values[f.key]);
+        state.inputs[f.key] = { field: f, ...inp };
+        const badge = f.restart ? el('span', {class: 'badge', title: 'Only takes effect after restarting the bot'}, 'restart') : null;
+        panel.append(fieldBlock(f.key, f.type === 'bool' ? null : f.label, inp, f.help, badge));
+      }
+      panels.push(panel);
+    }
+
+    const abbr = el('textarea', {id: 'f-abbreviations', rows: 10, spellcheck: false});
+    abbr.value = abbrToText(s.abbreviations);
+    state.inputs.abbreviations = { node: abbr, get: () => textToAbbr(abbr.value),
+                                   set: v => abbr.value = abbrToText(v) };
+    const emotes = el('textarea', {id: 'f-emotes', rows: 8, spellcheck: false});
+    emotes.value = s.emotes.join('\n');
+    state.inputs.emotes = { node: emotes, get: () => emotes.value.split('\n').map(x => x.trim()).filter(Boolean),
+                            set: v => emotes.value = v.join('\n') };
+    panels.push(el('div', {class: 'panel'}, el('h2', {}, 'Word lists'),
+      fieldBlock('abbreviations.json', 'Abbreviations', state.inputs.abbreviations,
+                 'Expanded when spoken. One per line: lol = laughing out loud'),
+      fieldBlock('emotes.json', 'Emotes to strip', state.inputs.emotes,
+                 'Third-party emote names (BTTV/7TV/FFZ) removed before speaking. One per line.')));
+
+    panels.push(el('p', {class: 'sub'}, 'Saved to ', el('code', {}, s.config_path),
+                   '. Comments in the file are kept.'));
+    $('form').replaceChildren(...panels);
+    renderBanners();
+    updateDirty();
+  }
+
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  // Collect edits: {values: {key: v}, abbreviations?, emotes?}, plus client-side errors.
+  function collect(){
+    const s = state.snap, changes = { values: {} }, errors = {};
+    for (const [key, inp] of Object.entries(state.inputs)){
+      let v;
+      try { v = inp.get(); } catch (e) { errors[key] = e.message; continue; }
+      if (WORD_LISTS.includes(key)){
+        if (!same(v, s[key])) changes[key] = v;
+        continue;
+      }
+      const err = clientError(inp.field, v);
+      if (err) { errors[key] = err; continue; }
+      if (!same(v, s.values[key])) changes.values[key] = v;
+    }
+    return { changes, errors };
+  }
+
+  function dirtyKeys(changes){
+    return [...Object.keys(changes.values), ...WORD_LISTS.filter(k => k in changes)];
+  }
+
+  function updateDirty(){
+    if (!state.loaded) return;
+    const { changes, errors } = collect();
+    const dirty = new Set(dirtyKeys(changes));
+    for (const [key, inp] of Object.entries(state.inputs)){
+      const block = inp.node.closest('.field');
+      const msg = errors[key] || state.errors[key];
+      block.classList.toggle('dirty', dirty.has(key) || key in errors);
+      block.classList.toggle('invalid', !!msg);
+      const p = block.querySelector('.error');
+      p.hidden = !msg; p.textContent = msg || '';
+    }
+    const n = dirty.size + Object.keys(errors).filter(k => !dirty.has(k)).length;
+    $('dirtyCount').hidden = !n;
+    $('dirtyCount').textContent = n;
+    $('saveBtn').disabled = !n || Object.keys(errors).length > 0;
+    $('revertBtn').disabled = !n;
+    $('saveStatus').textContent = Object.keys(errors).length ? 'Fix the highlighted fields to save.'
+      : n ? `${n} unsaved change${n > 1 ? 's' : ''}` : 'All changes saved.';
+  }
+
+  function summarize(result){
+    const n = result.changed.length;
+    return n ? `Applied ${n} change${n > 1 ? 's' : ''}.` : 'Nothing changed.';
+  }
+
+  async function save(){
+    const { changes, errors } = collect();
+    if (Object.keys(errors).length) return;
+    $('saveBtn').disabled = true;
+    setLamp('busy');
+    const { ok, status, body } = await api('/api/config', { method: 'POST', body: JSON.stringify(changes) })
+      .catch(e => ({ ok: false, status: 0, body: { error: e.message } }));
+    if (!ok){
+      setLamp('err');
+      state.errors = body.errors || {};
+      updateDirty();
+      renderBanners(banner('err', body.errors ? 'Some settings were rejected — see the highlighted fields.'
+                                              : `Save failed: ${body.error || 'HTTP ' + status}`));
+      return;
+    }
+    setLamp('ok');
+    await refreshAfter(body, 'Saved. ');
+  }
+
+  async function reloadFromFile(){
+    setLamp('busy');
+    const { ok, status, body } = await api('/api/reload', { method: 'POST' })
+      .catch(e => ({ ok: false, status: 0, body: { error: e.message } }));
+    if (!ok){
+      setLamp('err');
+      renderBanners(banner('err', `Reload failed: ${body.error || 'HTTP ' + status}`));
+      return;
+    }
+    setLamp('ok');
+    await refreshAfter(body, 'Reloaded from file. ');
+  }
+
+  async function refreshAfter(result, prefix){
+    const { ok, body } = await api('/api/config');
+    if (ok){ state.snap = body; state.errors = {}; render(); }
+    renderBanners(banner('ok', prefix + summarize(result)));
+  }
+
+  function revert(){
+    for (const [key, inp] of Object.entries(state.inputs))
+      inp.set(WORD_LISTS.includes(key) ? state.snap[key] : state.snap.values[key]);
+    state.errors = {};
+    updateDirty();
+  }
+
+  $('saveBtn').onclick = save;
+  $('revertBtn').onclick = revert;
+  $('reloadBtn').onclick = () => {
+    const { changes } = collect();
+    if (dirtyKeys(changes).length && !confirm('Discard your unsaved changes and reload from the files on disk?')) return;
+    reloadFromFile();
+  };
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 's' && !$('view-settings').hidden){
+      e.preventDefault();
+      if (!$('saveBtn').disabled) save();
+    }
+  });
+  window.addEventListener('beforeunload', e => {
+    if (state.loaded && dirtyKeys(collect().changes).length) e.preventDefault();
+  });
+
+  showTab(location.hash === '#settings' ? 'settings' : 'test');
+</script>
+</body>
+</html>

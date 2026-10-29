@@ -1,0 +1,21 @@
+# Personal, untracked copy - config.example.json is the tracked template
+config.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# PyInstaller / Inno Setup build output
+build/
+dist/
+Output/
+artifact/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Bot log (source-run mode)
+tellbird.log

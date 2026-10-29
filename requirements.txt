@@ -1,0 +1,8 @@
+pocket-tts
+numpy
+sounddevice
+websockets
+aiohttp
+certifi
+pystray
+pillow

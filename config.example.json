@@ -1,0 +1,146 @@
+{
+  // ============================================================
+  //  Tellbird - configuration
+  //  Lines starting with // are comments and are ignored.
+  //  Easiest: change settings on the control panel's Settings tab
+  //  (http://127.0.0.1:5050/). Or edit a value here, save, and click
+  //  "Reload from file" on the panel / "Reload config" in the tray menu.
+  //  mode, language, http_host, http_port and show_tray_icon only take
+  //  effect after a restart.
+  // ============================================================
+
+  // "twitch" = read your Twitch chat directly
+  // "http"   = read text that Firebot (or anything) POSTs to the local server
+  "mode": "twitch",
+
+  // Your Twitch channel, lowercase, no '#'. Used only in "twitch" mode.
+  "channel": "yourchannelname",
+
+  // Built-in voice. English options include:
+  //   alba, anna, michael, vera, jane, eve, george, mary, paul, charles
+  // (more exist; entering an unknown name makes the tool print the full list)
+  "voice": "alba",
+
+  // Model language. Keep "english" unless you deliberately use another model.
+  "language": "english",
+
+  // Audio output device (substring match), or null for the system default.
+  //   macOS  : "BlackHole 2ch"      (install BlackHole)
+  //   Windows: "CABLE Input"        (install VB-CABLE)
+  //   Linux  : a sink name, or null + OBS "Application Audio Capture"
+  // null plays to the default output (OBS can grab it via Desktop Audio).
+  // List devices:
+  //   python -c "import sounddevice as sd; print(sd.query_devices())"
+  "output_device": null,
+
+  // Speak the sender's name before the message.  --- TWITCH MODE ONLY ---
+  // (HTTP mode always speaks just the text you pass in.)
+  "read_username": true,
+
+  // How name + message are combined when read_username is true (twitch mode).
+  // Placeholders: {user} and {text}
+  "username_format": "{user} says: {text}",
+
+  // Skip messages shorter than this many characters.
+  "min_chars": 1,
+
+  // Shorten messages longer than this many characters.
+  "max_chars": 300,
+
+  // Minimum seconds between spoken messages per user. 0 = off (read everything).
+  "cooldown_seconds": 0,
+
+  // Trailing silence (seconds) added before playback so the last word/letter
+  // isn't clipped by the audio device. Increase if endings get cut.
+  "tail_padding_seconds": 0.4,
+
+  // Bot accounts whose messages are never read aloud (lowercase names).
+  "ignored_users": [
+    "nightbot", "streamelements", "streamlabs", "moobot",
+    "wizebot", "fossabot", "soundalerts", "pretzelrocks"
+  ],
+
+  // Messages starting with any of these are treated as commands and skipped.
+  "ignore_prefixes": ["!", "/"],
+
+  // ---- Optional anti-abuse filters (each switchable on its own) ----
+  "filters": {
+
+    // Shorten long runs of one character: "aaaaaa" -> "aaa", "!!!!!" -> "!!!"
+    "collapse_char_runs": true,
+    "max_char_run": 3,
+
+    // Collapse the same word repeated in a row:
+    //   "lol lol lol lol lol" -> "lol lol lol"
+    "collapse_word_repeats": true,
+    "max_word_repeats": 3,
+
+    // Collapse a repeated multi-word phrase (2..max_phrase_words words) the
+    // same way, e.g. "go team go team go team go team" -> "go team go team":
+    "collapse_phrase_repeats": true,
+    "max_phrase_words": 4,
+    "max_phrase_repeats": 3,
+
+    // Skip a whole message when one word dominates it (word spam). Off by
+    // default. Only kicks in from spam_min_words up, when a single word is
+    // at least spam_ratio (0.6 = 60%) of all words in the message.
+    "skip_word_spam": false,
+    "spam_min_words": 6,
+    "spam_ratio": 0.6,
+
+    // Skip a message that contains a single very long "word". 0 = off.
+    "max_word_length": 0,
+
+    // Skip a message identical to that user's previous one. Off.
+    "block_repeated_messages": false,
+
+    // Skip a message once copypasta_flood_min_users different chatters have
+    // sent that exact same message within the trailing window (raid/spam
+    // copypasta) - keeps the bot from reading the same line over and over.
+    // Off by default.
+    "block_copypasta_flood": false,
+    "copypasta_flood_window_seconds": 20,
+    "copypasta_flood_min_users": 3
+  },
+
+  // ---- Optional: trigger a Firebot action when a filter fires ----
+  // The bot calls Firebot's local API and runs a Preset Effect List, passing
+  // the offending username and the message. Create a preset list in Firebot,
+  // copy its ID (URL looks like .../effects/preset/THIS-IS-THE-ID), and paste
+  // it next to the matching filter below. Empty = no action for that filter.
+  "firebot_actions": {
+
+    // Master switch. Turn on to enable any of the actions below.
+    "enabled": false,
+
+    // Firebot's local API base. Default is fine unless you changed the port.
+    "api_base": "http://localhost:7472",
+
+    // true = fire and don't wait for the effects to finish (recommended).
+    "async": true,
+
+    // Filter -> Firebot Preset Effect List ID. Paste an ID to arm that filter.
+    // Note: char_run and word_repeat fire on almost every lively message, so
+    // usually you only wire the "block" filters (word_spam, long_word,
+    // repeated_message). Leave the others empty unless you really want them.
+    "presets": {
+      "word_spam": "",
+      "long_word": "",
+      "repeated_message": "",
+      "char_run": "",
+      "word_repeat": "",
+      "phrase_repeat": "",
+      "copypasta_flood": ""
+    }
+  },
+
+  // Local HTTP server address for "http" mode (where Firebot, Mix It Up, etc.
+  // send text - see README.md's "Using http mode with Mix It Up" section).
+  "http_host": "127.0.0.1",
+  "http_port": 5050,
+
+  // Run as a system-tray app (open config/log, skip, clear, quit from the
+  // tray icon) instead of a plain console window. Falls back to console mode
+  // automatically if the tray backend isn't available (e.g. headless Linux).
+  "show_tray_icon": true
+}

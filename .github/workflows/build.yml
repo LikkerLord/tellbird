@@ -1,0 +1,218 @@
+name: build-and-release
+
+# Push a tag like v1.0.0 to build installers for all 3 OSes and publish a Release.
+# You can also run it manually (workflow_dispatch) to test the build.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: windows }
+          - { os: macos-14,       name: macos }   # Apple Silicon
+          - { os: ubuntu-22.04,   name: linux }   # older glibc = broader compat
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # gir1.2-ayatanaappindicator3-0.1 / gir1.2-gtk-3.0 let pystray use the
+      # AppIndicator backend (real StatusNotifierItem, works on KDE/GNOME,
+      # X11 and Wayland) instead of falling back to its legacy Xorg/XEmbed
+      # backend, which is basically non-functional under Wayland (blank icon,
+      # no click/menu). The rest (libgirepository1.0-dev, pkg-config, gcc,
+      # libcairo2-dev, libglib2.0-dev) are needed to build PyGObject from pip.
+      - name: Linux audio + tray libs
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 xvfb \
+            libgirepository1.0-dev gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1 \
+            gcc pkg-config libcairo2-dev libglib2.0-dev libffi-dev
+
+      - name: Install dependencies (CPU-only torch keeps the size down)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install pyinstaller -r requirements.txt
+
+      # PyGObject needs the system dev headers installed above; only Linux
+      # needs it (pystray's Windows/macOS backends don't touch gi at all).
+      # Pinned to <3.52: 3.52+ requires the newer "girepository-2.0" pkg-config
+      # name, which Ubuntu 22.04's gobject-introspection doesn't provide (only
+      # the legacy girepository-1.0 from libgirepository1.0-dev above). 3.50.2
+      # is the last release built against that legacy name.
+      - name: Install PyGObject (Linux tray backend)
+        if: matrix.name == 'linux'
+        run: pip install "pygobject==3.50.2"
+
+      # pystray resolves its backend at `import pystray` time. With gi/GTK/
+      # AppIndicator now installed, that succeeds via the AppIndicator
+      # backend and never touches the broken Xorg fallback, so no xvfb is
+      # needed here anymore either.
+      - name: Freeze with PyInstaller
+        shell: bash
+        run: |
+          if [ "${{ matrix.name }}" = "linux" ]; then
+            pyinstaller packaging/tellbird.spec --noconfirm
+          else
+            pyinstaller packaging/tellbird.spec --noconfirm
+          fi
+
+      # -------- Windows: Inno Setup installer, then sign if a cert is configured --------
+      - name: Windows installer
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          if ([string]::IsNullOrWhiteSpace($version)) { $version = "0.0.0" }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version packaging\windows\installer.iss
+          New-Item -ItemType Directory -Force artifact | Out-Null
+          Copy-Item Output\*.exe artifact\
+
+      - name: Check Windows signing secret
+        if: matrix.name == 'windows'
+        id: win_cert_check
+        shell: bash
+        run: echo "present=${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' }}" >> "$GITHUB_OUTPUT"
+
+      # Needs repo secrets WINDOWS_CERTIFICATE_BASE64 (a .pfx, base64-encoded)
+      # and WINDOWS_CERTIFICATE_PASSWORD. Skipped (installer stays unsigned) if
+      # they aren't set - SmartScreen will then warn until you add them.
+      - name: Sign Windows installer
+        if: matrix.name == 'windows' && steps.win_cert_check.outputs.present == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certPath = "$env:RUNNER_TEMP\cert.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
+          $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter "signtool.exe" |
+            Where-Object { $_.FullName -match "x64" } | Select-Object -First 1).FullName
+          & $signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 artifact\*.exe
+          Remove-Item $certPath
+
+      - name: Check macOS signing secrets
+        if: matrix.name == 'macos'
+        id: mac_cert_check
+        run: echo "present=${{ secrets.MACOS_CERTIFICATE_BASE64 != '' }}" >> "$GITHUB_OUTPUT"
+
+      # Needs repo secrets MACOS_CERTIFICATE_BASE64 (a .p12, base64-encoded),
+      # MACOS_CERTIFICATE_PASSWORD and MACOS_CERTIFICATE_IDENTITY (the
+      # "Developer ID Application: Name (TEAMID)" string). Skipped if unset.
+      - name: Import macOS signing certificate
+        if: matrix.name == 'macos' && steps.mac_cert_check.outputs.present == 'true'
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+          echo "$MACOS_CERTIFICATE_BASE64" | base64 --decode > cert.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import cert.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm cert.p12
+
+      - name: Codesign macOS app
+        if: matrix.name == 'macos' && steps.mac_cert_check.outputs.present == 'true'
+        env:
+          MACOS_CERTIFICATE_IDENTITY: ${{ secrets.MACOS_CERTIFICATE_IDENTITY }}
+        run: |
+          codesign --deep --force --options runtime \
+            --sign "$MACOS_CERTIFICATE_IDENTITY" "dist/Tellbird.app"
+
+      # -------- macOS: .dmg from the .app (signed above if secrets are set) --------
+      - name: macOS dmg
+        if: matrix.name == 'macos'
+        run: |
+          mkdir -p artifact
+          brew install create-dmg || true
+          create-dmg --volname "Tellbird" --no-internet-enable \
+            "artifact/Tellbird-macos.dmg" "dist/Tellbird.app" \
+          || hdiutil create -volname "Tellbird" \
+               -srcfolder "dist/Tellbird.app" -ov -format UDZO \
+               "artifact/Tellbird-macos.dmg"
+
+      # Needs repo secrets APPLE_ID, APPLE_ID_PASSWORD (an app-specific
+      # password, not your real Apple ID password) and APPLE_TEAM_ID. Skipped
+      # if no signing cert was configured above (an unsigned dmg can't notarize).
+      - name: Notarize macOS dmg
+        if: matrix.name == 'macos' && steps.mac_cert_check.outputs.present == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "artifact/Tellbird-macos.dmg" \
+            --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple "artifact/Tellbird-macos.dmg"
+
+      # -------- Linux: AppImage (double-click, no extraction needed) --------
+      - name: Linux AppImage
+        if: matrix.name == 'linux'
+        run: |
+          mkdir -p artifact AppDir/usr/bin
+          cp -r dist/tellbird AppDir/usr/bin/tellbird
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "$HERE/usr/bin/tellbird/tellbird" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          cat > AppDir/tellbird.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Tellbird
+          Exec=tellbird
+          Icon=tellbird
+          Categories=Utility;
+          EOF
+          python -c "
+          from PIL import Image, ImageDraw
+          img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
+          d = ImageDraw.Draw(img)
+          d.ellipse((8, 8, 248, 248), fill=(88, 101, 242, 255))
+          d.text((100, 115), 'TTS', fill='white')
+          img.save('AppDir/tellbird.png')
+          "
+          wget -q -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          ./appimagetool --appimage-extract-and-run AppDir "artifact/Tellbird-${version:-dev}-x86_64.AppImage"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: artifact/*
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
