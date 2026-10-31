@@ -147,6 +147,13 @@ Linux `~/.config/tellbird`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Thanks
+
+- [DesignedByJoe](https://www.twitch.tv/designedbyjoe) - helped shape the
+  initial requirements and does a whole lot of testing.
+- [NonStickOcean](https://www.twitch.tv/nonstickocean) - helped testing and
+  finding some bugs.
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
