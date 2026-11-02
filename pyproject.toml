@@ -7,6 +7,11 @@ description = "Reads your Twitch chat aloud with a local text-to-speech voice."
 requires-python = ">=3.10"
 license = "MIT"
 
+[project.urls]
+Homepage = "https://tellbird.org"
+Source = "https://github.com/LikkerLord/tellbird"
+Issues = "https://github.com/LikkerLord/tellbird/issues"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
