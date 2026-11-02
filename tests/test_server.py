@@ -1,8 +1,12 @@
+import asyncio
 import json
+import socket
 
 from aiohttp.test_utils import TestClient, TestServer
 
-from conftest import run
+from conftest import FakeAudio, FakeSpeaker, run
+from tellbird.app import Bot
+from tellbird.config import Settings
 from tellbird.server import create_app
 
 
@@ -224,3 +228,64 @@ def test_rapid_skips_never_stall_the_queue(make_bot):
         bot.skip()
         worker.cancel()
     with_client(make_bot, test)
+
+
+def test_requests_refused_while_starting(paths):
+    async def go():
+        bot = Bot(paths)
+        async with TestClient(TestServer(create_app(bot))) as client:
+            r = await client.get("/tts", params={"text": "too early"})
+            assert r.status == 503
+            assert queued(bot) == []
+            assert (await client.post("/api/reload")).status == 503
+            assert (await client.post("/api/config", json={"values": {}})).status == 503
+            # The panel still works, for its loading screen.
+            panel = await client.get("/")
+            assert panel.status == 200
+            assert panel.headers["Cache-Control"] == "no-cache"
+            assert (await client.get("/api/config")).status == 200
+            status = await (await client.get("/api/status")).json()
+            assert status["speech_ready"] is False
+            assert status["stage"] == "starting"
+            assert (await client.post("/api/retry")).status == 409
+    run(go())
+
+
+def test_failed_load_can_be_retried(paths):
+    async def go():
+        bot = Bot(paths)
+        attempts = []
+
+        def load():
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise OSError("no internet")
+            bot.speaker, bot.audio = FakeSpeaker(), FakeAudio
+        bot._load_speech = load
+        bot.loop = asyncio.get_running_loop()
+
+        loading = asyncio.create_task(bot._load_until_ready())
+        async with TestClient(TestServer(create_app(bot))) as client:
+            while bot.startup.stage != "failed":
+                await asyncio.sleep(0)
+            status = await (await client.get("/api/status")).json()
+            assert "no internet" in status["error"]
+            assert (await client.post("/api/retry")).status == 200
+            await asyncio.wait_for(loading, 5)
+            assert (await client.get("/tts", params={"text": "hello"})).status == 200
+        assert len(attempts) == 2
+    run(go())
+
+
+def test_port_in_use_is_reported(paths):
+    async def go():
+        with socket.socket() as taken:
+            taken.bind(("127.0.0.1", 0))
+            taken.listen()
+            bot = Bot(paths)
+            bot.settings = Settings({**bot.running.active, "http_host": "127.0.0.1",
+                                     "http_port": taken.getsockname()[1]})
+            await bot.run()
+        assert bot.startup.stage == "failed"
+        assert "already running" in bot.startup.error
+    run(go())

@@ -3,6 +3,8 @@
 This is the only module that pulls in torch and PortAudio; everything else
 (and the tests) can be imported without them."""
 
+import contextlib
+import inspect
 import logging
 import threading
 import time
@@ -75,6 +77,54 @@ def play_blocking(data, rate, device, cancel):
             if cancel.is_set() or time.monotonic() > deadline:
                 stream.abort()
                 break
+
+
+@contextlib.contextmanager
+def report_downloads(on_progress):
+    """Calls on_progress(done_bytes, total_bytes) for model files downloaded
+    inside the `with`. Pocket TTS offers no hook for this, so its Hugging Face
+    download call gets our own progress bar. Best effort: if either library
+    changes shape, the download still works, just without progress."""
+    try:
+        from huggingface_hub.utils import tqdm as hf_tqdm
+        from pocket_tts.utils import utils as pocket_utils
+        original = pocket_utils.hf_hub_download
+        supported = "tqdm_class" in inspect.signature(original).parameters
+    except Exception as e:
+        log.info(f"[audio] can't report download progress: {e}")
+        supported = False
+    if not supported:
+        yield
+        return
+
+    files = []
+
+    def report():
+        on_progress(sum(bar.n for bar in files), sum(bar.total or 0 for bar in files))
+
+    class ProgressBar(hf_tqdm):
+        def __init__(self, *args, **kwargs):
+            # Xet downloads get a second bar for network transfer on top of
+            # the one for bytes written; only count the latter.
+            self._counted = not (kwargs.get("name") or "").endswith(".transfer")
+            super().__init__(*args, **{**kwargs, "disable": True})
+            if self._counted:
+                files.append(self)
+                report()
+
+        def update(self, n=1):
+            self.n += n
+            if self._counted:
+                report()
+
+    def download(*args, **kwargs):
+        return original(*args, **{**kwargs, "tqdm_class": ProgressBar})
+
+    pocket_utils.hf_hub_download = download
+    try:
+        yield
+    finally:
+        pocket_utils.hf_hub_download = original
 
 
 class Speaker:

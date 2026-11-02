@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 
-from . import firebot
+from . import firebot, startup
 from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, ConfigError, RunningConfig,
                      coerce, read_config_file, read_word_lists, write_config, write_json)
 from .speechqueue import QueueItem, SpeechQueue
@@ -18,12 +18,16 @@ log = logging.getLogger("tellbird")
 class Bot:
     """Everything the running bot needs, with no globals. `speaker` is an
     audio.Speaker (or a stand-in with the same methods, in tests); `audio`
-    is the module providing check_output_device/output_device_names."""
+    is the module providing check_output_device/output_device_names. Without
+    them, run() loads the real ones in the background after starting the panel."""
 
-    def __init__(self, paths, speaker, audio):
+    def __init__(self, paths, speaker=None, audio=None):
         self.paths = paths
         self.speaker = speaker
         self.audio = audio
+        self.startup = startup.Startup()
+        self._loaded_speaker = None    # kept across retries: the model outlives a bad voice
+        self._retry = asyncio.Event()
         self.running = RunningConfig()
         values, warnings = read_config_file(paths.config)
         for w in warnings:
@@ -31,8 +35,9 @@ class Bot:
         self.settings, _ = self.running.apply(values)
         self.word_lists = WordLists(*read_word_lists(paths.abbreviations, paths.emotes))
         self.chat_filter = ChatFilter(self.settings, self.word_lists, on_filter=self._on_filter)
-        speaker.set_voice(self.settings["voice"])
-        speaker.set_output_device(self.settings["output_device"])
+        if speaker is not None:
+            speaker.set_voice(self.settings["voice"])
+            speaker.set_output_device(self.settings["output_device"])
         self.queue = SpeechQueue()
         self.current = None            # the QueueItem being spoken right now
         self.current_started = 0.0
@@ -182,7 +187,8 @@ class Bot:
         lists, and whether the saved files differ from what's running."""
         active = self.running.active
         snap = {"schema": CONFIG_SCHEMA, "running": active,
-                "suggest": {"voices": KNOWN_VOICES, "devices": self.audio.output_device_names()},
+                "suggest": {"voices": KNOWN_VOICES,
+                            "devices": self.audio.output_device_names() if self.audio else []},
                 "config_path": str(self.paths.config)}
         try:
             values, warnings = read_config_file(self.paths.config)
@@ -203,18 +209,89 @@ class Bot:
                 "abbreviations": abbreviations, "emotes": emotes,
                 "restart_pending": self.running.restart_pending(values), "unapplied": unapplied}
 
+    # ------------------------------- Startup ---------------------------------
+    @property
+    def speech_ready(self):
+        return self.speaker is not None
+
+    def status_snapshot(self):
+        return {**self.startup.snapshot(), "speech_ready": self.speech_ready}
+
+    def retry_startup(self):
+        """Try loading again after a failure; False if nothing has failed."""
+        if self.startup.stage != startup.FAILED:
+            return False
+        self._retry.set()
+        return True
+
+    def _load_speech(self):
+        """The slow part of starting: may download the model. Blocking. The
+        config is read again because a retry may follow a fix to the file."""
+        from . import audio
+        self.startup.set(startup.LOADING)
+        values, _ = read_config_file(self.paths.config)
+        self.settings, _ = self.running.apply(values)
+        self.chat_filter.settings = self.settings
+        with audio.report_downloads(self.startup.download_progress):
+            if self._loaded_speaker is None:
+                self._loaded_speaker = audio.Speaker(self.settings["language"])
+            self.startup.set(startup.VOICE)
+            self._loaded_speaker.set_voice(self.settings["voice"])
+        self._loaded_speaker.set_output_device(self.settings["output_device"])
+        self.audio, self.speaker = audio, self._loaded_speaker
+
+    def _in_background(self, func):
+        """Run func on a daemon thread, unlike run_in_executor, so quitting
+        during a download doesn't wait for it to finish."""
+        future = self.loop.create_future()
+
+        def target():
+            try:
+                func()
+            except Exception as e:
+                self.loop.call_soon_threadsafe(future.set_exception, e)
+            else:
+                self.loop.call_soon_threadsafe(future.set_result, None)
+
+        threading.Thread(target=target, daemon=True).start()
+        return future
+
+    async def _load_until_ready(self):
+        while not self.speech_ready:
+            try:
+                await self._in_background(self._load_speech)
+            except (ConfigError, ValueError) as e:
+                self.startup.fail(str(e))
+            except Exception as e:
+                log.exception("[startup] loading failed:")
+                self.startup.fail(f"Couldn't load the voice model: {e}")
+            else:
+                return
+            await self._retry.wait()
+            self._retry.clear()
+
     # --------------------------------- Run -----------------------------------
     async def run(self):
         from .server import serve
         self.loop = asyncio.get_running_loop()
         # The control server (/skip, /clear, /tts) runs in BOTH modes so the
         # skip URL always works; twitch mode additionally reads the chat.
-        await serve(self, self.settings["http_host"], self.settings["http_port"])
+        port = self.settings["http_port"]
+        try:
+            await serve(self, self.settings["http_host"], port)
+        except OSError as e:
+            self.startup.fail(f"Couldn't open port {port}. Is Tellbird already running? ({e})")
+            return
+        await self._load_until_ready()
         tasks = [self.speech_worker()]
         if self.settings["mode"] == "twitch":
             from .twitch import TwitchChat
-            self.twitch = TwitchChat(lambda: self.settings.channel, self.on_chat_message)
+            self.startup.set(startup.CONNECTING)
+            self.twitch = TwitchChat(lambda: self.settings.channel, self.on_chat_message,
+                                     on_connected=lambda: self.startup.set(startup.READY))
             tasks.append(self.twitch.run())
+        else:
+            self.startup.set(startup.READY)
         await asyncio.gather(*tasks)
 
 
@@ -228,22 +305,22 @@ def main():
     for note in paths.notes:
         log.info(note)
 
-    # Read the config before the (slow) model load so a broken config.json
-    # fails right away.
+    from . import tray
     try:
-        values, _ = read_config_file(paths.config)
-    except ConfigError as e:
-        raise SystemExit(str(e))
-    from . import audio
-    speaker = audio.Speaker(values["language"])
-    try:
-        bot = Bot(paths, speaker, audio)
+        bot = Bot(paths)
     except (ConfigError, ValueError) as e:
-        raise SystemExit(str(e))
-    log.info(f"Pocket TTS ready. Mode: {bot.settings['mode']} | "
+        # No settings means no port for the panel, so the tray is all there is.
+        log.error(str(e))
+        if not tray.available():
+            raise SystemExit(str(e))
+        try:
+            tray.run_failed(paths, str(e))
+        except KeyboardInterrupt:
+            pass
+        return
+    log.info(f"Mode: {bot.settings['mode']} | "
              f"Output: {bot.settings['output_device'] or 'default'}")
 
-    from . import tray
     if bot.settings["show_tray_icon"] and tray.available():
         worker = threading.Thread(target=lambda: asyncio.run(bot.run()), daemon=True)
         worker.start()
@@ -259,3 +336,5 @@ def main():
             asyncio.run(bot.run())
         except KeyboardInterrupt:
             log.info("Stopped.")
+        if bot.startup.error:
+            raise SystemExit(bot.startup.error)

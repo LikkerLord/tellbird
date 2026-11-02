@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 
+from . import startup
 from .config import ConfigError
 from .paths import ICON_PATH
 
@@ -89,6 +90,68 @@ def available():
         return False
 
 
+def _notify(icon, message):
+    # Not on macOS: pystray goes through osascript there, which shows up as
+    # Script Editor rather than Tellbird. The menu bar text covers it instead.
+    if sys.platform == "darwin" or not icon.HAS_NOTIFICATION:
+        return
+    try:
+        # Windows rejects anything over 256 characters.
+        icon.notify(message[:200], "Tellbird")
+    except Exception as e:
+        log.warning(f"[tray] couldn't show a notification: {e}")
+
+
+def _set_menu_bar_text(icon, text):
+    """Text beside the icon, on the macOS main thread like all AppKit calls.
+    Reaches into pystray for the status item, which it has no API for."""
+    from PyObjCTools import AppHelper
+
+    def apply():
+        try:
+            icon._status_item.button().setTitle_(text)
+        except Exception as e:
+            log.warning(f"[tray] couldn't set the menu bar text: {e}")
+
+    AppHelper.callAfter(apply)
+
+
+def _startup_listener(icon):
+    """-> a Startup listener keeping the icon up to date with the stage."""
+    shown = set()
+
+    def on_change(status):
+        if sys.platform == "darwin":
+            from PyObjCTools import AppHelper
+            AppHelper.callAfter(icon.update_menu)
+            _set_menu_bar_text(icon, "Downloading…" if status.stage == startup.DOWNLOADING else "")
+        else:
+            icon.update_menu()
+        message = status.announcement()
+        if message and message not in shown:
+            shown.add(message)
+            _notify(icon, message)
+
+    return on_change
+
+
+def run_failed(paths, error):
+    """Blocking: a tray icon that only reports why Tellbird can't run."""
+    import pystray
+
+    def setup(icon):
+        icon.visible = True
+        _notify(icon, error)
+
+    menu = pystray.Menu(
+        pystray.MenuItem("Tellbird couldn't start", None, enabled=False),
+        pystray.MenuItem("Open config folder", lambda icon, item: open_path(paths.app_dir)),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("Quit", lambda icon, item: (icon.stop(), os._exit(0))),
+    )
+    pystray.Icon("tellbird", _icon_image(), "Tellbird", menu).run(setup=setup)
+
+
 def run(bot):
     """Blocking: runs the tray icon on the calling (main) thread while
     bot.run() runs on bot.loop in another thread."""
@@ -115,10 +178,11 @@ def run(bot):
 
     s = bot.settings
     items = [
-        pystray.MenuItem(f"Tellbird ({s['mode']} mode)", None, enabled=False),
+        pystray.MenuItem(lambda item: bot.startup.menu_text(s["mode"]), None, enabled=False),
         pystray.MenuItem("Open Tellbird panel",
                          lambda icon, item: open_path(panel_url(s["http_host"], s["http_port"]))),
-        pystray.MenuItem("Reload config", lambda icon, item: submit(reload())),
+        pystray.MenuItem("Reload config", lambda icon, item: submit(reload()),
+                         enabled=lambda item: bot.speech_ready),
         pystray.MenuItem("Open config folder", lambda icon, item: open_path(bot.paths.app_dir)),
         pystray.MenuItem("Open log folder", lambda icon, item: open_path(bot.paths.app_dir)),
         pystray.Menu.SEPARATOR,
@@ -127,4 +191,9 @@ def run(bot):
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Quit", on_quit),
     ]
-    pystray.Icon("tellbird", _icon_image(), "Tellbird", pystray.Menu(*items)).run()
+
+    def setup(icon):
+        icon.visible = True
+        bot.startup.subscribe(_startup_listener(icon))
+
+    pystray.Icon("tellbird", _icon_image(), "Tellbird", pystray.Menu(*items)).run(setup=setup)

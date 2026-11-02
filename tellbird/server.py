@@ -12,6 +12,8 @@ from .paths import ICON_PATH
 
 log = logging.getLogger("tellbird")
 
+STILL_STARTING = "Tellbird is still starting up"
+
 
 async def _read_tts_request(request):
     """-> (user, text) from any of the request shapes /tts accepts (see README)."""
@@ -69,7 +71,14 @@ async def _cors(request, handler):
 def create_app(bot):
     """The aiohttp application for a running app.Bot."""
 
+    def not_ready():
+        # Refused rather than queued: a long first download would otherwise
+        # build up a backlog that all gets read out at once.
+        return web.json_response({"error": STILL_STARTING}, status=503)
+
     async def handle_tts(request):
+        if not bot.speech_ready:
+            return web.Response(text=STILL_STARTING, status=503)
         user, text = await _read_tts_request(request)
         display = str(user).strip()
         user = display.lower()                    # filters/cooldowns are case-insensitive
@@ -98,7 +107,8 @@ def create_app(bot):
         return web.Response(text="ok")
 
     async def handle_panel(request):
-        return web.FileResponse(bot.paths.panel_html)
+        # Revalidate every time, so an updated app never shows the old page.
+        return web.FileResponse(bot.paths.panel_html, headers={"Cache-Control": "no-cache"})
 
     async def handle_icon(request):
         return web.FileResponse(ICON_PATH)
@@ -107,6 +117,8 @@ def create_app(bot):
         return web.json_response(bot.config_snapshot())
 
     async def handle_config_post(request):
+        if not bot.speech_ready:
+            return not_ready()
         if request.content_type != "application/json":
             return web.json_response({"error": "expected application/json"}, status=415)
         try:
@@ -137,7 +149,17 @@ def create_app(bot):
         log.info(f"[queue] removed message #{item_id}")
         return web.json_response({"removed": item_id})
 
+    async def handle_status(request):
+        return web.json_response(bot.status_snapshot())
+
+    async def handle_retry(request):
+        if not bot.retry_startup():
+            return web.json_response({"error": "nothing to retry"}, status=409)
+        return web.json_response({"retrying": True})
+
     async def handle_reload(request):
+        if not bot.speech_ready:
+            return not_ready()
         try:
             return web.json_response(await bot.reload_config())
         except ConfigError as e:
@@ -153,6 +175,8 @@ def create_app(bot):
     app.router.add_get("/api/config", handle_config_get)
     app.router.add_post("/api/config", handle_config_post)
     app.router.add_post("/api/reload", handle_reload)
+    app.router.add_get("/api/status", handle_status)
+    app.router.add_post("/api/retry", handle_retry)
     app.router.add_get("/api/queue", handle_queue)
     app.router.add_delete("/api/queue/{id}", handle_queue_remove)
     return app

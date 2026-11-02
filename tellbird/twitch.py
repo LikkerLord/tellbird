@@ -43,11 +43,12 @@ def parse_privmsg(line):
 class TwitchChat:
     """Stays connected to the configured channel (reconnecting on errors)
     and hands every chat message to on_message(login, display, message,
-    emotes_tag)."""
+    emotes_tag). on_connected() is called after each successful connect."""
 
-    def __init__(self, get_channel, on_message):
+    def __init__(self, get_channel, on_message, on_connected=None):
         self._get_channel = get_channel
         self._on_message = on_message
+        self._on_connected = on_connected
         self._ws = None
 
     async def rejoin(self):
@@ -67,6 +68,8 @@ class TwitchChat:
                     await ws.send(f"NICK justinfan{random.randint(10000, 99999)}")
                     await ws.send(f"JOIN #{channel}")
                     log.info(f"Connected to #{channel}. Waiting for messages ...")
+                    if self._on_connected:
+                        self._on_connected()
                     async for raw in ws:
                         for line in raw.split("\r\n"):
                             if line.startswith("PING"):

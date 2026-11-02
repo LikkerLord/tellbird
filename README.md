@@ -31,12 +31,13 @@ safe to skip for files downloaded from the link above.
 
 ## First start
 
-1. **Start Tellbird.** The first start downloads the voice model, which takes
-   a few minutes - later starts are quick. A Tellbird icon appears in your
-   system tray (Windows: bottom right, maybe behind the `^` arrow; macOS: top
-   menu bar).
+1. **Start Tellbird.** A Tellbird icon appears in your system tray right away
+   (Windows: bottom right, maybe behind the `^` arrow; macOS: top menu bar).
+   The first start then downloads the voice model, which takes a few minutes -
+   later starts are quick. The tray menu shows what it's doing.
 2. **Open the control panel:** click the tray icon -> **Open Tellbird panel**,
-   or go to <http://127.0.0.1:5050/> in your browser.
+   or go to <http://127.0.0.1:5050/> in your browser. It shows the download's
+   progress until Tellbird is ready.
 3. **Settings tab:** enter your **Twitch channel** name and click
    **Save & apply**.
 4. **Test it:** type a line on the panel's **Test** tab and click **Speak**, or
