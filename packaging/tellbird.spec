@@ -60,6 +60,12 @@ a = Analysis(
     excludes=[],
     noarchive=False,
 )
+if sys.platform.startswith("linux"):
+    # Use the system's libasound, not the build machine's. The bundled one only
+    # looks for its plugins in Ubuntu's folders, so on other distros it never
+    # finds the PipeWire/PulseAudio plugin: "default" then means a raw sound
+    # card, not the output the user picked, and they hear nothing.
+    a.binaries = [b for b in a.binaries if not os.path.basename(b[0]).startswith("libasound.so")]
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, [],
