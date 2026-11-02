@@ -19,6 +19,19 @@ automatically by GitHub Actions.
    - Linux:   `Tellbird-<ver>-x86_64.AppImage` (double-click, no install)
    `workflow_dispatch` lets you run a build without tagging, to test.
 
+## Branches
+- **`main`** holds what's ready to release. A normal tag like `v1.0.0` only
+  publishes if its commit is on `main`.
+- **`dev`** is for work in progress. Every push builds the installers without
+  publishing anything: download them from the run's artifacts on the Actions
+  tab (`Tellbird-dev-Setup.exe`, `Tellbird-macos.dmg`,
+  `Tellbird-dev-x86_64.AppImage`). A newer push cancels a build still running.
+- To share a test build, tag it like `v1.0.0-rc1`. It's published as a
+  pre-release, which never becomes the latest release.
+
+A dev build is the same app as a release: it installs over one and uses the
+same settings folder.
+
 ## What it does under the hood
 - Installs **CPU-only PyTorch** (the default wheel bundles CUDA and is huge).
 - Installs the exact versions in `constraints.txt`, so builds are reproducible.

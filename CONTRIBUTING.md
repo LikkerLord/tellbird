@@ -51,7 +51,9 @@ CI runs both on every push and pull request.
 
 ## Releases
 
-Pushing a tag like `v1.2.3` builds the Windows, macOS and Linux installers
-and publishes a GitHub release; see [packaging/README.md](packaging/README.md).
+Work happens on `dev`, where every push builds the installers without
+publishing them. Merge to `main` when it's ready. Pushing a tag like `v1.2.3`
+from `main` builds the Windows, macOS and Linux installers and publishes a
+GitHub release; see [packaging/README.md](packaging/README.md).
 Release builds install the exact versions in `constraints.txt`. Bump the
 version in `tellbird/__init__.py` to match the tag.

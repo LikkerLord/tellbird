@@ -1,14 +1,22 @@
 name: build-and-release
 
-# Push a tag like v1.0.0 to build installers for all 3 OSes and publish a Release.
-# You can also run it manually (workflow_dispatch) to test the build.
+# Push a tag like v1.0.0 from main to build installers for all 3 OSes and
+# publish a Release. Every push to dev builds them too, without publishing:
+# download them from the run's artifacts. You can also run it manually
+# (workflow_dispatch) to test the build of any branch.
 on:
   push:
+    branches: [dev]
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# A newer push to dev replaces its running build. Never cancel a release.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/dev' }}
 
 jobs:
   build:
@@ -197,6 +205,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
+      # Normal releases only come from main. Pre-releases (a tag like
+      # v1.2.0-rc1) may come from any branch, e.g. to share a dev build.
+      - uses: actions/checkout@v4
+        if: ${{ !contains(github.ref_name, '-') }}
+        with:
+          fetch-depth: 0
+      - name: Check the tag is on main
+        if: ${{ !contains(github.ref_name, '-') }}
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "::error::${GITHUB_REF_NAME} isn't on main. Merge it first, or use a pre-release tag like ${GITHUB_REF_NAME}-rc1."
+            exit 1
+          }
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -204,3 +225,4 @@ jobs:
         with:
           files: artifacts/**/*
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
