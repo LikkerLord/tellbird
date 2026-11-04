@@ -141,10 +141,10 @@ def report_downloads(on_progress):
 class Speaker:
     """The loaded TTS model plus the current voice and output device."""
 
-    def __init__(self, language):
+    def __init__(self, model):
         from pocket_tts import TTSModel
-        log.info("Loading Pocket TTS model ...")
-        self._model = TTSModel.load_model(language=language)
+        log.info(f"Loading Pocket TTS model {model} ...")
+        self._model = TTSModel.load_model(language=model)
         self.sample_rate = self._model.sample_rate
         self._voice_states = {}       # name -> loaded voice, so switching back is instant
         self.voice = None

@@ -42,6 +42,7 @@ KNOWN_VOICES = ["alba", "anna", "azelma", "bill_boerst", "caro_davy", "charles",
                 "giovanni", "jane", "javert", "jean", "juergen", "lola", "marius",
                 "mary", "michael", "paul", "peter_yearsley", "rafael",
                 "stuart_bell", "vera"]
+SMALL_MODELS = {"english": "english_18m_2026-10"}   # language -> its small model
 FIREBOT_FILTERS = {      # filter name -> how the panel describes it
     "word_spam": "word spam",
     "long_word": "an over-long word",
@@ -51,6 +52,12 @@ FIREBOT_FILTERS = {      # filter name -> how the panel describes it
     "word_repeat": "repeated words",
     "phrase_repeat": "repeated phrases",
 }
+
+
+def model_name(settings):
+    """The Pocket TTS model to load for these settings."""
+    language = settings["language"]
+    return SMALL_MODELS.get(language, language) if settings["small_model"] else language
 
 
 def _field(section, key, type_, default, label, help="", **extra):
@@ -69,6 +76,10 @@ CONFIG_SCHEMA = [
            "The built-in voice that reads messages aloud.", pick="voices"),
     _field("General", "language", "str", "english", "Model language",
            'Keep "english" unless you deliberately use another model.', restart=True),
+    _field("General", "small_model", "bool", False, "Use the small model",
+           "The 18M model instead of the full 100M one: less delay and CPU use, but it "
+           'may sound a little different. Downloads about 107 MB once. Only for "english".',
+           restart=True),
     _field("General", "output_device", "nullable_str", None, "Output device",
            "Device name (substring match). Empty = system default. macOS: "
            '"BlackHole 2ch", Windows: "CABLE Input".', suggest="devices"),

@@ -4,7 +4,7 @@ import pytest
 
 from conftest import REPO
 from tellbird.config import (CONFIG_SCHEMA, SCHEMA_BY_KEY, ConfigError, RunningConfig, Settings,
-                             coerce, read_config_file, resolve_config, strip_comments,
+                             coerce, model_name, read_config_file, resolve_config, strip_comments,
                              update_config_text)
 
 
@@ -146,3 +146,9 @@ def test_depends_points_to_an_earlier_switch():
             assert parent["type"] == "bool", f["key"]
             assert parent["section"] == f["section"], f["key"]
             assert CONFIG_SCHEMA.index(parent) < i, f["key"]
+
+
+def test_model_name_picks_the_small_model_only_when_it_exists():
+    assert model_name({"language": "english", "small_model": False}) == "english"
+    assert model_name({"language": "english", "small_model": True}) == "english_18m_2026-10"
+    assert model_name({"language": "german", "small_model": True}) == "german"

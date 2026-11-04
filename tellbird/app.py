@@ -8,7 +8,8 @@ import time
 
 from . import firebot, startup
 from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, ConfigError, RunningConfig,
-                     coerce, read_config_file, read_word_lists, write_config, write_json)
+                     coerce, model_name, read_config_file, read_word_lists, write_config,
+                     write_json)
 from .speechqueue import QueueItem, SpeechQueue
 from .textproc import ChatFilter, WordLists
 
@@ -234,7 +235,7 @@ class Bot:
         self.chat_filter.settings = self.settings
         with audio.report_downloads(self.startup.download_progress):
             if self._loaded_speaker is None:
-                self._loaded_speaker = audio.Speaker(self.settings["language"])
+                self._loaded_speaker = audio.Speaker(model_name(self.settings))
             self.startup.set(startup.VOICE)
             self._loaded_speaker.set_voice(self.settings["voice"])
         self._loaded_speaker.set_output_device(self.settings["output_device"])

@@ -1000,7 +1000,9 @@
   async function refreshAfter(result, prefix){
     const { ok, body } = await api('/api/config');
     if (ok){ state.snap = body; state.errors = {}; render(); }
-    renderBanners(banner('ok', prefix + summarize(result)));
+    // Only restart-only settings changed: the restart banner already says so.
+    const restartOnly = !result.changed.length && (result.restart_pending || []).length;
+    renderBanners(restartOnly ? null : banner('ok', prefix + summarize(result)));
   }
 
   function revert(){

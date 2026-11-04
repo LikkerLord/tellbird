@@ -5,7 +5,7 @@
   //  Easiest: change settings on the control panel's Settings tab
   //  (http://127.0.0.1:5050/). Or edit a value here, save, and click
   //  "Reload from file" on the panel / "Reload config" in the tray menu.
-  //  mode, language, http_host, http_port and show_tray_icon only take
+  //  mode, language, small_model, http_host, http_port and show_tray_icon only take
   //  effect after a restart.
   // ============================================================
 
@@ -22,6 +22,10 @@
 
   // Model language. Keep "english" unless you deliberately use another model.
   "language": "english",
+
+  // true = use the 18M model instead of the full 100M one: less delay and CPU
+  // use, but it may sound a little different. Only for "english".
+  "small_model": false,
 
   // Audio output device (substring match), or null for the system default.
   //   macOS  : "BlackHole 2ch"      (install BlackHole)

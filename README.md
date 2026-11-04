@@ -84,6 +84,7 @@ each option. **Save & apply** takes effect immediately; the few settings
 marked *restart* need Tellbird to be restarted. Highlights:
 
 - **Voice** - pick one of the built-in voices from the list.
+- **Use the small model** - less delay and CPU use, for English only.
 - **Read username** / **Username format** - "Alice says: hello" or just
   "hello".
 - **Ignored users** - bots like Nightbot and StreamElements are skipped by
