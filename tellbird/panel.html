@@ -748,6 +748,17 @@
       return { node: ta, input: ta, get: () => ta.value.split('\n').map(s => s.trim()).filter(Boolean),
                set: v => ta.value = v.join('\n') };
     }
+    if (f.pick){
+      // A dropdown of the known options. A value from outside the list (like a
+      // hand-edited config) gets its own entry, so showing it doesn't change it.
+      const sel = el('select', {id}, ...state.snap.suggest[f.pick].map(c => el('option', {value: c}, c)));
+      const set = v => {
+        if (![...sel.options].some(o => o.value === v)) sel.append(el('option', {value: v}, v));
+        sel.value = v;
+      };
+      set(value);
+      return { node: sel, input: sel, get: () => sel.value, set };
+    }
     const inp = el('input', {id, type: (f.type === 'int' || f.type === 'float') ? 'number' : 'text', autocomplete: 'off'});
     if (f.type === 'int') inp.step = '1';
     if (f.type === 'float') inp.step = 'any';

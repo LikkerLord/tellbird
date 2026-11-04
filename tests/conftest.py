@@ -44,6 +44,10 @@ class FakeAudio:
             raise ValueError("No output device matching 'missing'")
 
     @staticmethod
+    def voice_names():
+        return ["alba", "zelda"]
+
+    @staticmethod
     def output_device_names():
         return ["Speakers"]
 

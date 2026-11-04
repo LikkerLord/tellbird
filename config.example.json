@@ -16,9 +16,8 @@
   // Your Twitch channel, lowercase, no '#'. Used only in "twitch" mode.
   "channel": "yourchannelname",
 
-  // Built-in voice. English options include:
+  // Built-in voice. The control panel lists all of them. Some examples:
   //   alba, anna, michael, vera, jane, eve, george, mary, paul, charles
-  // (more exist; entering an unknown name makes the tool print the full list)
   "voice": "alba",
 
   // Model language. Keep "english" unless you deliberately use another model.

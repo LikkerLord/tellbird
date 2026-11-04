@@ -82,6 +82,8 @@ def test_config_snapshot(make_bot):
         snap = await (await client.get("/api/config")).json()
         assert snap["values"]["voice"] == "alba"
         assert snap["suggest"]["devices"] == ["Speakers"]
+        voice = next(f for f in snap["schema"] if f["key"] == "voice")
+        assert snap["suggest"][voice["pick"]] == ["alba", "zelda"]
         assert snap["unapplied"] == [] and snap["restart_pending"] == []
         assert "panel" not in snap
     with_client(make_bot, test)

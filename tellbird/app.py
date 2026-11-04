@@ -187,7 +187,7 @@ class Bot:
         lists, and whether the saved files differ from what's running."""
         active = self.running.active
         snap = {"schema": CONFIG_SCHEMA, "running": active,
-                "suggest": {"voices": KNOWN_VOICES,
+                "suggest": {"voices": self.audio.voice_names() if self.audio else KNOWN_VOICES,
                             "devices": self.audio.output_device_names() if self.audio else []},
                 "config_path": str(self.paths.config)}
         try:

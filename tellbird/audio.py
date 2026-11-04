@@ -33,6 +33,17 @@ def output_device_names():
         return []
 
 
+def voice_names():
+    """Every built-in voice of the installed Pocket TTS. The catalog is a
+    private name there, so a future version may move it."""
+    try:
+        from pocket_tts.utils.utils import _ORIGINS_OF_PREDEFINED_VOICES as catalog
+    except ImportError:
+        from .config import KNOWN_VOICES
+        return KNOWN_VOICES
+    return sorted(catalog)
+
+
 def resample_linear(data, orig_rate, target_rate):
     if orig_rate == target_rate or len(data) == 0:
         return data

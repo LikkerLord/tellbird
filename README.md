@@ -83,8 +83,7 @@ Everything is on the panel's **Settings** tab, with an explanation next to
 each option. **Save & apply** takes effect immediately; the few settings
 marked *restart* need Tellbird to be restarted. Highlights:
 
-- **Voice** - pick one of the built-in voices (alba, anna, michael, vera,
-  jane, eve, george, mary, paul, charles).
+- **Voice** - pick one of the built-in voices from the list.
 - **Read username** / **Username format** - "Alice says: hello" or just
   "hello".
 - **Ignored users** - bots like Nightbot and StreamElements are skipped by

@@ -35,8 +35,13 @@ def load_json(path, default, allow_comments=False):
 # This drives loading/validation AND the settings page of the web panel.
 # "restart": the running bot only picks the value up after a restart; every
 # other key is applied live by a reload (web panel or tray menu).
-KNOWN_VOICES = ["alba", "anna", "michael", "vera", "jane", "eve", "george",
-                "mary", "paul", "charles"]
+# Only used until the speech engine has loaded, or if Pocket TTS stops exposing
+# its catalog; see audio.voice_names().
+KNOWN_VOICES = ["alba", "anna", "azelma", "bill_boerst", "caro_davy", "charles",
+                "cosette", "eponine", "estelle", "eve", "fantine", "george",
+                "giovanni", "jane", "javert", "jean", "juergen", "lola", "marius",
+                "mary", "michael", "paul", "peter_yearsley", "rafael",
+                "stuart_bell", "vera"]
 FIREBOT_FILTERS = {      # filter name -> how the panel describes it
     "word_spam": "word spam",
     "long_word": "an over-long word",
@@ -61,7 +66,7 @@ CONFIG_SCHEMA = [
     _field("General", "channel", "str", "yourchannelname", "Twitch channel",
            "Lowercase, no '#'. Twitch mode only."),
     _field("General", "voice", "str", "alba", "Voice",
-           "Built-in Pocket TTS voice name.", suggest="voices"),
+           "The built-in voice that reads messages aloud.", pick="voices"),
     _field("General", "language", "str", "english", "Model language",
            'Keep "english" unless you deliberately use another model.', restart=True),
     _field("General", "output_device", "nullable_str", None, "Output device",
