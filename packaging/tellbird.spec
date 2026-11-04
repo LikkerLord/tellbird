@@ -17,7 +17,7 @@ def root(*parts):
 
 datas, binaries, hiddenimports = [], [], []
 # Pull in everything these packages need (torch is the big one).
-for pkg in ("torch", "pocket_tts", "sentencepiece", "sounddevice", "aiohttp", "certifi",
+for pkg in ("torch", "pocket_tts", "sentencepiece", "tokenizers", "sounddevice", "aiohttp", "certifi",
             "pystray", "PIL"):
     d, b, h = collect_all(pkg)
     datas += d; binaries += b; hiddenimports += h

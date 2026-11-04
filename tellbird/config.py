@@ -38,7 +38,7 @@ def load_json(path, default, allow_comments=False):
 # Only used until the speech engine has loaded, or if Pocket TTS stops exposing
 # its catalog; see audio.voice_names().
 KNOWN_VOICES = ["alba", "anna", "azelma", "bill_boerst", "caro_davy", "charles",
-                "cosette", "eponine", "estelle", "eve", "fantine", "george",
+                "cosette", "daan", "eponine", "estelle", "eve", "fantine", "george",
                 "giovanni", "jane", "javert", "jean", "juergen", "lola", "marius",
                 "mary", "michael", "paul", "peter_yearsley", "rafael",
                 "stuart_bell", "vera"]
