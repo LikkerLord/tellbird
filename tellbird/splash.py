@@ -71,6 +71,8 @@ class _Poller:
 
     def __init__(self, url):
         self.url = url
+        # A proxy would answer for localhost itself, or fail.
+        self._open = urllib.request.build_opener(urllib.request.ProxyHandler({})).open
         self.status = None
         self.started = time.monotonic()
         self.last_ok = None
@@ -78,7 +80,7 @@ class _Poller:
     def run(self):
         while True:
             try:
-                with urllib.request.urlopen(self.url + "api/status", timeout=2) as r:
+                with self._open(self.url + "api/status", timeout=2) as r:
                     self.status = json.load(r)
                 self.last_ok = time.monotonic()
             except Exception:
@@ -96,7 +98,7 @@ class _Poller:
         def post():
             try:
                 req = urllib.request.Request(self.url + "api/retry", data=b"", method="POST")
-                urllib.request.urlopen(req, timeout=2).close()
+                self._open(req, timeout=2).close()
             except Exception:
                 pass
         threading.Thread(target=post, daemon=True).start()
