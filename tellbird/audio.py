@@ -27,19 +27,41 @@ def check_output_device(device):
         raise ValueError(str(e))
 
 
+# Linux host APIs that go through the sound server (PipeWire/PulseAudio), where
+# devices have the names the system shows everywhere else.
+SOUND_SERVER_APIS = ("JACK Audio Connection Kit", "PulseAudio")
+
+
+def _is_real_device(device, api, has_sound_server):
+    """False for the entries PortAudio lists on Linux that aren't devices a
+    user would recognise or should pick."""
+    if api == "ALSA":
+        # With a sound server, every raw ALSA device is a duplicate that
+        # bypasses it. Without one, keep the hardware ("... (hw:1,3)") and
+        # drop ALSA's plugins ("dmix", "surround51", "default", ...).
+        return not has_sound_server and "(hw:" in device["name"]
+    # PipeWire's Bluetooth loopback node: listed as an output, plays nowhere.
+    return not device["name"].startswith("Bluetooth internal capture stream")
+
+
 def output_device_names():
-    """Every output device, each by a name that selects exactly that device:
-    just its name, or "name, host API" when several host APIs offer a device
-    of that name (on Windows, MME, DirectSound and WASAPI usually all do).
-    A bare name there would match all of them, which PortAudio rejects."""
+    """The output devices to offer, each by a name that selects exactly that
+    device: just its name, or "name, host API" when several host APIs offer
+    a device of that name (on Windows, MME, DirectSound and WASAPI usually
+    all do). A bare name there would match all of them, which PortAudio
+    rejects."""
     try:
         devices = [d for d in sd.query_devices() if d["max_output_channels"] > 0]
-        hostapis = sd.query_hostapis()
+        apis = [h["name"] for h in sd.query_hostapis()]
     except Exception:
         return []
+    has_sound_server = "ALSA" in apis and any(
+        apis[d["hostapi"]] in SOUND_SERVER_APIS for d in devices)
+    devices = [d for d in devices
+               if _is_real_device(d, apis[d["hostapi"]], has_sound_server)]
     counts = Counter(d["name"] for d in devices)
     return sorted({d["name"] if counts[d["name"]] == 1
-                   else f"{d['name']}, {hostapis[d['hostapi']]['name']}" for d in devices},
+                   else f"{d['name']}, {apis[d['hostapi']]}" for d in devices},
                   key=str.lower)
 
 
