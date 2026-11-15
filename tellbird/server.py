@@ -32,6 +32,10 @@ async def _read_tts_request(request):
             # no escaping, so a stray quote/backslash in the message breaks
             # the JSON. Fall back to the raw body as plain text.
             return user, await request.text()
+        if not isinstance(data, (dict, list)):
+            # Firebot marks any body that happens to parse as JSON as JSON, so a
+            # plain-text message like "123" or "true" arrives that way.
+            return user, await request.text()
         if not isinstance(data, dict):
             raise web.HTTPBadRequest(text='expected a JSON object like {"text": "..."}')
         return data.get("user", user), data.get("text", "")

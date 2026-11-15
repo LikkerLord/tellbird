@@ -49,6 +49,9 @@ def test_tts_rejects_non_object_json(make_bot):
         r = await client.post("/tts", json=["hello"])
         assert r.status == 400
         assert queued(bot) == []
+        # A plain message that happens to be valid JSON (Firebot labels it so).
+        r = await client.post("/tts", data="123", headers={"Content-Type": "application/json"})
+        assert r.status == 200 and queued(bot) == ["123."]
     with_client(make_bot, test)
 
 
