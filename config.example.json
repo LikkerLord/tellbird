@@ -32,7 +32,7 @@
   //   Windows: "CABLE Input"        (install VB-CABLE)
   //   Linux  : a sink name, or null + OBS "Application Audio Capture"
   // null plays to the default output (OBS can grab it via Desktop Audio).
-  // The panel's Output device field lists the devices Tellbird can see.
+  // Easiest: pick it from the list in the panel's settings.
   "output_device": null,
 
   // Speak the sender's name before the message.  --- TWITCH MODE ONLY ---

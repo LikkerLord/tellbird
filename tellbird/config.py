@@ -84,8 +84,8 @@ CONFIG_SCHEMA = [
            'may sound a little different. Downloads about 107 MB once. Only for "english".',
            restart=True),
     _field("General", "output_device", "nullable_str", None, "Output device",
-           "Device name (substring match). Empty = system default. macOS: "
-           '"BlackHole 2ch", Windows: "CABLE Input".', suggest="devices"),
+           "Where the voice plays. A virtual cable (macOS: BlackHole 2ch, Windows: "
+           "CABLE Input) gives it its own source in OBS.", pick="devices"),
     _field("General", "show_tray_icon", "bool", True, "Show tray icon",
            "Run as a system-tray app instead of a plain console window.",
            restart=True),

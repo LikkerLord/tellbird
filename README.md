@@ -54,16 +54,18 @@ cable, then capture that cable in OBS on its own. This gives it its own
 volume slider and keeps it out of your headphones if you want.
 
 - **Windows:** install [VB-CABLE](https://vb-audio.com/Cable/). In the panel,
-  set **Output device** to `CABLE Input`. In OBS add an **Audio Input
-  Capture** source and pick **CABLE Output**.
+  set **Output device** to **CABLE Input (VB-Audio Virtual Cable)** (any of
+  its entries). In OBS add an **Audio Input Capture** source and pick
+  **CABLE Output**.
 - **macOS:** install [BlackHole](https://existential.audio/blackhole/) (2ch).
   Set **Output device** to `BlackHole 2ch`, and add an OBS **Audio Input
   Capture** source on **BlackHole 2ch**.
 - **Linux (PipeWire):** leave the output device empty and add an OBS
   **Application Audio Capture** source for Tellbird.
 
-The **Output device** field on the panel suggests the devices it finds; leave
-it empty for your system default.
+Pick the **Output device** from the list in the panel's settings, or keep
+**System default**. A device you plug in while Tellbird runs shows up after a
+restart.
 
 ## Everyday use
 
@@ -131,7 +133,7 @@ the Settings tab.
 
 - **Nothing is read:** check the panel's channel name (no `#`). Messages
   starting with `!` and messages from ignored users are skipped on purpose.
-- **No sound / wrong device:** clear the **Output device** field to use your
+- **No sound / wrong device:** set **Output device** to **System default** to use your
   default speakers and test again from the panel.
 - **The last word gets cut off:** raise **Tail padding** in the settings.
 - **No tray icon on Linux (GNOME):** install the "AppIndicator and KStatusNotifierItem

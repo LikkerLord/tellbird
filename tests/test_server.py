@@ -84,6 +84,8 @@ def test_config_snapshot(make_bot):
         assert snap["suggest"]["devices"] == ["Speakers"]
         voice = next(f for f in snap["schema"] if f["key"] == "voice")
         assert snap["suggest"][voice["pick"]] == ["alba", "zelda"]
+        device = next(f for f in snap["schema"] if f["key"] == "output_device")
+        assert snap["suggest"][device["pick"]] == ["Speakers"]
         assert snap["unapplied"] == [] and snap["restart_pending"] == []
         assert "panel" not in snap
     with_client(make_bot, test)

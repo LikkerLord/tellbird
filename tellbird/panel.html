@@ -750,31 +750,28 @@
     }
     if (f.pick){
       // A dropdown of the known options. A value from outside the list (like a
-      // hand-edited config) gets its own entry, so showing it doesn't change it.
-      const sel = el('select', {id}, ...state.snap.suggest[f.pick].map(c => el('option', {value: c}, c)));
+      // hand-edited config, or a device that's unplugged) gets its own entry,
+      // so showing it doesn't change it. Empty = null for nullable settings.
+      const nullable = f.type === 'nullable_str';
+      const sel = el('select', {id},
+        ...(nullable ? [el('option', {value: ''}, 'System default')] : []),
+        ...(state.snap.suggest[f.pick] || []).map(c => el('option', {value: c}, c)));
       const set = v => {
+        v = v ?? '';
         if (![...sel.options].some(o => o.value === v)) sel.append(el('option', {value: v}, v));
         sel.value = v;
       };
       set(value);
-      return { node: sel, input: sel, get: () => sel.value, set };
+      return { node: sel, input: sel, get: () => nullable ? (sel.value || null) : sel.value, set };
     }
     const inp = el('input', {id, type: (f.type === 'int' || f.type === 'float') ? 'number' : 'text', autocomplete: 'off'});
     if (f.type === 'int') inp.step = '1';
     if (f.type === 'float') inp.step = 'any';
     if (f.min != null) inp.min = f.min;
     if (f.max != null) inp.max = f.max;
-    if (f.type === 'nullable_str') inp.placeholder = 'System default';
-    if (f.suggest){
-      const listId = 'dl-' + f.suggest;
-      inp.setAttribute('list', listId);
-      if (!$(listId)) document.body.append(el('datalist', {id: listId},
-        ...(state.snap.suggest[f.suggest] || []).map(v => el('option', {value: v}))));
-    }
     inp.value = value == null ? '' : value;
     const get = () => {
       const raw = inp.value.trim();
-      if (f.type === 'nullable_str') return raw || null;
       if (f.type === 'int' || f.type === 'float') return raw === '' ? NaN : Number(raw);
       return inp.value;
     };

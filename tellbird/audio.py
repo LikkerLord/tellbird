@@ -8,6 +8,7 @@ import inspect
 import logging
 import threading
 import time
+from collections import Counter
 
 import numpy as np
 import sounddevice as sd
@@ -27,10 +28,19 @@ def check_output_device(device):
 
 
 def output_device_names():
+    """Every output device, each by a name that selects exactly that device:
+    just its name, or "name, host API" when several host APIs offer a device
+    of that name (on Windows, MME, DirectSound and WASAPI usually all do).
+    A bare name there would match all of them, which PortAudio rejects."""
     try:
-        return sorted({d["name"] for d in sd.query_devices() if d["max_output_channels"] > 0})
+        devices = [d for d in sd.query_devices() if d["max_output_channels"] > 0]
+        hostapis = sd.query_hostapis()
     except Exception:
         return []
+    counts = Counter(d["name"] for d in devices)
+    return sorted({d["name"] if counts[d["name"]] == 1
+                   else f"{d['name']}, {hostapis[d['hostapi']]['name']}" for d in devices},
+                  key=str.lower)
 
 
 def voice_names():
