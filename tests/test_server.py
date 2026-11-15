@@ -2,12 +2,14 @@ import asyncio
 import json
 import socket
 
+import pytest
+
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from conftest import FakeAudio, FakeSpeaker, run
 from tellbird import __version__
-from tellbird.app import Bot, already_running
+from tellbird.app import Bot, already_running, edit_list
 from tellbird.config import Settings
 from tellbird.server import APP_HEADER, create_app
 
@@ -335,3 +337,46 @@ def test_already_running(make_bot):
             free = s.getsockname()[1]
         assert not await check(free)                  # nothing answers
     run(go())
+
+
+def test_edit_list_parsing():
+    new, reply = edit_list("acronyms", ["IT"], "add", "GPU IT GPU")
+    assert new == ["IT", "GPU"] and reply == "Added to the acronyms: GPU."
+    assert edit_list("acronyms", ["IT"], "add", "IT") == (["IT"], "Already in the acronyms: IT.")
+    assert edit_list("acronyms", ["npc"], "add", "NPC")[1] == "Already in the acronyms: NPC."
+    assert edit_list("acronyms", ["NPC"], "add", "npc")[0] == ["NPC", "npc"]   # widens it
+    assert edit_list("acronyms", ["IT", "it"], "remove", "IT")[0] == ["it"]      # exact case
+    assert edit_list("acronyms", ["IT"], "remove", "GPU")[1] == "Not in the acronyms: GPU."
+    for text in ("brb = be right back", "brb be right back"):
+        new, reply = edit_list("abbreviations", {"BRB": "old", "gg": "good game"}, "add", text)
+        assert new == {"gg": "good game", "brb": "be right back"}
+        assert reply == 'brb now reads as "be right back".'
+    assert edit_list("abbreviations", {"BRB": "x", "gg": "y"}, "remove", "brb")[0] == {"gg": "y"}
+    for name, action, text in (("acronyms", "add", ""), ("abbreviations", "add", "brb"),
+                               ("abbreviations", "add", "good game = gg"),
+                               ("emotes", "remove", " ")):
+        with pytest.raises(ValueError):
+            edit_list(name, [] if name != "abbreviations" else {}, action, text)
+
+
+def test_list_endpoints(make_bot, paths):
+    async def test(client, bot):
+        r = await client.post("/api/lists/acronyms/add", data="GPU2 NPC",
+                              headers={"Content-Type": "text/plain"})
+        assert r.status == 200 and await r.text() == "Added to the acronyms: GPU2."
+        assert "GPU2" in json.loads(paths.word_list("acronyms").read_text())
+        assert bot.chat_filter.clean_text("my GPU2") == "my G-P-U-2."
+        r = await client.post("/api/lists/abbreviations/add", json={"text": "afk = away"})
+        assert await r.text() == 'afk now reads as "away".'
+        assert bot.chat_filter.clean_text("afk") == "away."
+        r = await client.post("/api/lists/emotes/remove?text=catJAM")
+        assert r.status == 200
+        r = await client.post("/api/lists/acronyms/add", data="",
+                              headers={"Content-Type": "text/plain"})
+        assert r.status == 400 and "add" in await r.text()
+        assert (await client.post("/api/lists/nope/add", data="x")).status == 404
+        assert (await client.get("/api/lists/acronyms/add?text=X")).status == 405
+        r = await client.post("/api/lists/acronyms/add", data="EVIL",
+                              headers={"Origin": "https://evil.example"})
+        assert r.status == 403
+    with_client(make_bot, test)

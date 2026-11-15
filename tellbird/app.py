@@ -17,6 +17,44 @@ from .textproc import ChatFilter, WordLists, strip_native_emotes
 log = logging.getLogger("tellbird")
 
 
+def edit_list(name, current, action, text):
+    """Apply a bot command ("add"/"remove" plus the command's text) to the
+    contents of one word list. Returns (new contents, reply for the chat);
+    raises ValueError with a usage hint for the chat on bad input."""
+    words = text.split()
+    if WORD_LISTS[name] is dict:
+        if action == "add":
+            if "=" in text:
+                key, _, expansion = (s.strip() for s in text.partition("="))
+            else:
+                key, expansion = (words[0], " ".join(words[1:])) if words else ("", "")
+            if not key or not expansion or len(key.split()) > 1:
+                raise ValueError("Use it like: brb = be right back")
+            new = {k: v for k, v in current.items() if k.lower() != key.lower()}
+            new[key] = expansion
+            return new, f'{key} now reads as "{expansion}".'
+        gone = [w for w in words if w.lower() in {k.lower() for k in current}]
+        new = {k: v for k, v in current.items() if k.lower() not in {w.lower() for w in gone}}
+    else:
+        if action == "add":
+            if not words:
+                raise ValueError(f"Say what to add to the {name}.")
+            # A lowercase acronym matches any case, so "npc" already covers "NPC".
+            any_case = {w for w in current if w == w.lower()} if name == "acronyms" else set()
+            added = [w for w in dict.fromkeys(words)
+                     if w not in current and w.lower() not in any_case]
+            if not added:
+                return current, f"Already in the {name}: {', '.join(words)}."
+            return current + added, f"Added to the {name}: {', '.join(added)}."
+        gone = [w for w in words if w in current]
+        new = [w for w in current if w not in gone]
+    if not words:
+        raise ValueError(f"Say what to remove from the {name}.")
+    if not gone:
+        return current, f"Not in the {name}: {', '.join(words)}."
+    return new, f"Removed from the {name}: {', '.join(gone)}."
+
+
 def _changed_lists(new, old):
     """Names of the word lists that differ between two WordLists."""
     return [name for name in WORD_LISTS if getattr(new, name) != getattr(old, name)]
@@ -51,6 +89,7 @@ class Bot:
         self.loop: asyncio.AbstractEventLoop | None = None   # set by run(); used by the tray
         self.twitch = None
         self._reload_lock = asyncio.Lock()
+        self._lists_lock = asyncio.Lock()       # bot commands editing a word list
 
     def _on_filter(self, filter_name, user, text):
         firebot.fire(self.settings, filter_name, user, text)
@@ -186,6 +225,18 @@ class Bot:
             for name, value in word_lists.items():
                 write_json(self.paths.word_list(name), value)
         return await self.reload_config()
+
+    async def edit_word_list(self, name, action, text):
+        """A bot command adding to / removing from a word list (see
+        edit_list). Works on the saved file, so hand edits aren't lost.
+        Returns the reply for the chat."""
+        async with self._lists_lock:
+            current = read_word_lists(self.paths)[name]
+            new, reply = edit_list(name, current, action, text)
+            if new != current:
+                await self.save_config({}, {name: new})
+                log.info(f"[lists] {reply}")
+            return reply
 
     def config_snapshot(self):
         """Everything the settings page needs: schema, saved values, word

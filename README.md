@@ -129,6 +129,34 @@ and restart Tellbird. Your bot then sends text to `http://127.0.0.1:5050/tts`:
 Other tools can also `POST` JSON (`{"user": "...", "text": "..."}`) or a form
 (`user=...&text=...`).
 
+> **Send the message exactly as it was written, capitals included.** Tellbird
+> tells the acronym "IT" (read "I-T") from the word "it" by its capitals. If
+> your bot sends the text in all lowercase, or uses a variable that does,
+> capitalised acronyms are read as plain words.
+
+## Bot commands for the word lists
+
+You can let mods add words from chat, e.g. `!acronym GPU`. Point a bot
+command at one of these URLs with a `POST` request, and send the command's
+words as a plain-text body, as in the Mix It Up example above. It works in
+both modes.
+
+| URL (`http://127.0.0.1:5050` + ...) | Body | Does |
+|---|---|---|
+| `/api/lists/acronyms/add` | `GPU CPU` | Adds each word to the acronyms |
+| `/api/lists/acronyms/remove` | `GPU` | Removes it |
+| `/api/lists/abbreviations/add` | `brb = be right back` | Adds or replaces an abbreviation |
+| `/api/lists/abbreviations/remove` | `brb` | Removes it |
+| `/api/lists/emotes/add` / `remove` | `catJAM` | Adds / removes an emote to leave out |
+
+`brb be right back` (without the `=`) works too: the first word is the
+abbreviation. The reply is a short sentence like "Added to the acronyms:
+GPU." that your bot can post in chat. Changes apply right away and are
+saved to the word list files.
+
+Tellbird can't tell who ran the command, so **limit these commands to mods**
+(or just yourself) in your bot's command settings.
+
 **Firebot reactions to filters:** Tellbird can also *trigger* Firebot when a
 filter catches spam - e.g. to time someone out. See **Firebot actions** on
 the Settings tab.

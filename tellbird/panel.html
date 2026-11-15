@@ -860,7 +860,7 @@
                  help: 'Expanded when spoken. One per line, like: brb = be right back'},
                  state.inputs.abbreviations, {stack: true}),
       fieldBlock('acronyms', {label: 'Acronyms to spell out',
-                 help: 'Read letter by letter (GPU becomes G-P-U), one per line. In capitals it only matches capitals, so IT leaves the word "it" alone. In lowercase it matches any case.'},
+                 help: 'Read letter by letter (GPU becomes G-P-U), one per line. In capitals it only matches capitals, so IT leaves the word "it" alone. In lowercase it matches any case. A bot sending text to /tts must keep its capitals.'},
                  state.inputs.acronyms, {stack: true}),
       fieldBlock('emotes', {label: 'Emotes to leave out',
                  help: 'BTTV / 7TV / FFZ emote names, one per line. Twitch\'s own emotes are removed automatically.'},

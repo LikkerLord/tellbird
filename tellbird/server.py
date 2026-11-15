@@ -141,6 +141,23 @@ def create_app(bot):
             return web.json_response({"error": str(e)}, status=500)
         return web.json_response(result)
 
+    async def handle_list_edit(request):
+        # For bot commands like "!acronym add GPU": the reply is plain text,
+        # so the bot can post it in chat.
+        name, action = request.match_info["name"], request.match_info["action"]
+        if name not in WORD_LISTS or action not in ("add", "remove"):
+            raise web.HTTPNotFound(text=f"Lists: {', '.join(WORD_LISTS)}; actions: add, remove")
+        if not bot.speech_ready:
+            return web.Response(text=STILL_STARTING, status=503)
+        _user, text = await _read_tts_request(request)
+        text = str(text or request.query.get("text", "")).strip()
+        try:
+            return web.Response(text=await bot.edit_word_list(name, action, text))
+        except ValueError as e:
+            return web.Response(text=str(e), status=400)
+        except (ConfigError, OSError) as e:
+            return web.Response(text=f"Couldn't change the {name}: {e}", status=500)
+
     async def handle_queue(request):
         return web.json_response(bot.queue_snapshot())
 
@@ -182,6 +199,7 @@ def create_app(bot):
     app.router.add_post("/api/reload", handle_reload)
     app.router.add_get("/api/status", handle_status)
     app.router.add_post("/api/retry", handle_retry)
+    app.router.add_post("/api/lists/{name}/{action}", handle_list_edit)
     app.router.add_get("/api/queue", handle_queue)
     app.router.add_delete("/api/queue/{id}", handle_queue_remove)
     return app
