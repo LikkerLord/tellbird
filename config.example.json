@@ -29,7 +29,9 @@
 
   // Audio output device (substring match), or null for the system default.
   //   macOS  : "BlackHole 2ch"      (install BlackHole)
-  //   Windows: "CABLE Input"        (install VB-CABLE)
+  //   Windows: "CABLE Input (VB-Audio Virtual Cable), Windows DirectSound"
+  //            (install VB-CABLE; Windows lists each device several times,
+  //            so a name alone usually matches more than one)
   //   Linux  : a sink name, or null + OBS "Application Audio Capture"
   // null plays to the default output (OBS can grab it via Desktop Audio).
   // Easiest: pick it from the list in the panel's settings.

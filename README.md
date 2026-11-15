@@ -55,8 +55,8 @@ cable, then capture that cable in OBS on its own. This gives it its own
 volume slider and keeps it out of your headphones if you want.
 
 - **Windows:** install [VB-CABLE](https://vb-audio.com/Cable/). In the panel,
-  set **Output device** to **CABLE Input (VB-Audio Virtual Cable)** (any of
-  its entries). In OBS add an **Audio Input Capture** source and pick
+  set **Output device** to **CABLE Input (VB-Audio Virtual Cable), Windows
+  DirectSound**. In OBS add an **Audio Input Capture** source and pick
   **CABLE Output**.
 - **macOS:** install [BlackHole](https://existential.audio/blackhole/) (2ch).
   Set **Output device** to `BlackHole 2ch`, and add an OBS **Audio Input

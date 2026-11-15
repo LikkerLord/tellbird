@@ -50,8 +50,9 @@ echo.
 echo ============================================
 echo  Setup complete.
 echo  1) Install VB-CABLE: https://vb-audio.com/Cable/
-echo  2) Edit config.json: set channel, voice, and
-echo     output_device to "CABLE Input (VB-Audio Virtual Cable)"
-echo  3) Double-click windows-start.bat
+echo  2) Double-click windows-start.bat
+echo  3) In Tellbird's panel, set your channel, voice and
+echo     Output device: CABLE Input (VB-Audio Virtual Cable),
+echo     Windows DirectSound
 echo ============================================
 pause

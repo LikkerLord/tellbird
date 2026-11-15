@@ -30,6 +30,32 @@ def test_output_device_names_are_unambiguous(monkeypatch):
         "CABLE Input", "Speakers, MME", "Speakers, Windows WASAPI"]
 
 
+WINDOWS_APIS = [{"name": "MME", "default_output_device": 0},
+                {"name": "Windows DirectSound", "default_output_device": 3},
+                {"name": "Windows WASAPI", "default_output_device": 6},
+                {"name": "Windows WDM-KS", "default_output_device": 8}]
+WINDOWS_DEVICES = [
+    device("Microsoft Sound Mapper - Output", 0),
+    device("Speakers (Realtek(R) Audio)", 0),
+    device("CABLE Input (VB-Audio Virtual C", 0),          # MME cuts names off
+    device("Primary Sound Driver", 1),                     # = the system default
+    device("Speakers (Realtek(R) Audio)", 1),
+    device("CABLE Input (VB-Audio Virtual Cable)", 1),
+    device("Speakers (Realtek(R) Audio)", 2),
+    device("CABLE Input (VB-Audio Virtual Cable)", 2),
+    device("Speakers (Realtek HD Audio output)", 3),
+    device("Primary Sound Capture Driver", 1, outputs=0),
+]
+
+
+def test_windows_lists_each_device_once_through_directsound(monkeypatch):
+    audio = load_audio(monkeypatch, WINDOWS_DEVICES, WINDOWS_APIS)
+    assert audio.output_device_names() == [
+        "CABLE Input (VB-Audio Virtual Cable), Windows DirectSound",
+        "Speakers (Realtek(R) Audio), Windows DirectSound",
+    ]
+
+
 def test_output_device_names_survive_portaudio_errors(monkeypatch):
     audio = load_audio(monkeypatch, [], [])
 

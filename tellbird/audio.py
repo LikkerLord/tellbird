@@ -64,6 +64,9 @@ def check_output_device(device):
 SOUND_SERVER_APIS = ("JACK Audio Connection Kit", "PulseAudio")
 
 
+WINDOWS_API = "Windows DirectSound"
+
+
 def _is_real_device(device, api, has_sound_server):
     """False for the entries PortAudio lists on Linux that aren't devices a
     user would recognise or should pick."""
@@ -79,21 +82,35 @@ def _is_real_device(device, api, has_sound_server):
 def output_device_names():
     """The output devices to offer, each by a name that selects exactly that
     device: just its name, or "name, host API" when several host APIs offer
-    a device of that name (on Windows, MME, DirectSound and WASAPI usually
-    all do). A bare name there would match all of them, which PortAudio
-    rejects."""
+    a device of that name. A bare name would match all of them, which
+    PortAudio rejects."""
     try:
-        devices = [d for d in sd.query_devices() if d["max_output_channels"] > 0]
-        apis = [h["name"] for h in sd.query_hostapis()]
+        devices = [(i, d) for i, d in enumerate(sd.query_devices())
+                   if d["max_output_channels"] > 0]
+        hostapis = sd.query_hostapis()
     except Exception:
         return []
-    has_sound_server = "ALSA" in apis and any(
-        apis[d["hostapi"]] in SOUND_SERVER_APIS for d in devices)
-    devices = [d for d in devices
-               if _is_real_device(d, apis[d["hostapi"]], has_sound_server)]
-    counts = Counter(d["name"] for d in devices)
-    return sorted({d["name"] if counts[d["name"]] == 1
-                   else f"{d['name']}, {apis[d['hostapi']]}" for d in devices},
+    apis = [h["name"] for h in hostapis]
+    qualify_all = False
+    if any(apis[d["hostapi"]] == WINDOWS_API for _, d in devices):
+        # Windows offers every device through MME, DirectSound, WASAPI and
+        # WDM-KS. List each once, through DirectSound: full names (MME cuts
+        # them at 31 characters), and it converts rates and mono itself.
+        # WASAPI has the same full names, so the API stays in every value.
+        primary = next(h["default_output_device"] for h in hostapis if h["name"] == WINDOWS_API)
+        devices = [(i, d) for i, d in devices
+                   # The default is its "Primary Sound Driver" (in the system's
+                   # language): the same as the system default.
+                   if apis[d["hostapi"]] == WINDOWS_API and i != primary]
+        qualify_all = True
+    else:
+        has_sound_server = "ALSA" in apis and any(
+            apis[d["hostapi"]] in SOUND_SERVER_APIS for _, d in devices)
+        devices = [(i, d) for i, d in devices
+                   if _is_real_device(d, apis[d["hostapi"]], has_sound_server)]
+    counts = Counter(d["name"] for _, d in devices)
+    return sorted({d["name"] if counts[d["name"]] == 1 and not qualify_all
+                   else f"{d['name']}, {apis[d['hostapi']]}" for _, d in devices},
                   key=str.lower)
 
 
