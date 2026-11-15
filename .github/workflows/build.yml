@@ -27,7 +27,7 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, name: windows }
-          - { os: macos-14,       name: macos }   # Apple Silicon
+          - { os: macos-15,       name: macos }   # Apple Silicon
           - { os: ubuntu-22.04,   name: linux }   # older glibc = broader compat
     steps:
       - uses: actions/checkout@v4
