@@ -5,8 +5,8 @@
   //  Easiest: change settings on the control panel's Settings tab
   //  (http://127.0.0.1:5050/). Or edit a value here, save, and click
   //  "Reload from file" on the panel / "Reload config" in the tray menu.
-  //  mode, language, small_model, http_host, http_port and show_tray_icon only take
-  //  effect after a restart.
+  //  mode, language, small_model, http_host, http_port, show_tray_icon and
+  //  show_splash only take effect after a restart.
   // ============================================================
 
   // "twitch" = read your Twitch chat directly
@@ -144,5 +144,9 @@
   // Run as a system-tray app (open config/log, skip, clear, quit from the
   // tray icon) instead of a plain console window. Falls back to console mode
   // automatically if the tray backend isn't available (e.g. headless Linux).
-  "show_tray_icon": true
+  "show_tray_icon": true,
+
+  // Show a small window with the startup progress each time Tellbird starts.
+  // It closes by itself once Tellbird is ready.
+  "show_splash": true
 }

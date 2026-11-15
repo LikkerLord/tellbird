@@ -89,6 +89,9 @@ CONFIG_SCHEMA = [
     _field("General", "show_tray_icon", "bool", True, "Show tray icon",
            "Run as a system-tray app instead of a plain console window.",
            restart=True),
+    _field("General", "show_splash", "bool", True, "Show startup window",
+           "A small window with the startup progress, closed once Tellbird is ready.",
+           restart=True),
 
     _field("Speech", "read_username", "bool", True, "Read username",
            "Speak the sender's name before the message (twitch mode only)."),

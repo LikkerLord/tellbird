@@ -320,6 +320,9 @@ def main():
         return
     log.info(f"Mode: {bot.settings['mode']} | "
              f"Output: {bot.settings['output_device'] or 'default'}")
+    if bot.settings["show_splash"]:
+        from . import splash
+        splash.launch(tray.panel_url(bot.settings["http_host"], bot.settings["http_port"]))
 
     if bot.settings["show_tray_icon"] and tray.available():
         worker = threading.Thread(target=lambda: asyncio.run(bot.run()), daemon=True)
