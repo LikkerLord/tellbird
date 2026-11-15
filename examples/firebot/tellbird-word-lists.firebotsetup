@@ -1,0 +1,446 @@
+{
+  "name": "Tellbird word lists",
+  "description": "Chat commands for mods to edit Tellbird's word lists: !acronym (read letter by letter), !abbreviation (slang to expand) and !ttsemote (emotes to leave out). Each takes add or remove.",
+  "author": "Tellbird",
+  "version": 1,
+  "requireCurrency": false,
+  "importQuestions": [
+    {
+      "id": "fafd42ee-5020-43f9-9f0f-1bdbdcec8c00",
+      "replaceToken": "%TellbirdAddress%",
+      "answerType": "text",
+      "question": "Tellbird's address",
+      "helpText": "Where Tellbird's panel opens, without a trailing slash. Only change it if you changed Tellbird's HTTP host or port.",
+      "defaultAnswer": "http://127.0.0.1:5050"
+    }
+  ],
+  "components": {
+    "commands": [
+      {
+        "id": "409b2a9e-96ba-41fa-9e19-748669b2a0d1",
+        "type": "custom",
+        "active": true,
+        "simple": false,
+        "trigger": "!acronym",
+        "aliases": [],
+        "createdBy": "Tellbird",
+        "description": "Tellbird: add or remove acronyms read letter by letter.",
+        "usage": "!acronym add GPU | !acronym remove GPU",
+        "cooldown": {
+          "global": 0,
+          "user": 0
+        },
+        "ignoreBot": true,
+        "restrictionData": {
+          "mode": "all",
+          "sendFailMessage": true,
+          "restrictions": [
+            {
+              "id": "0b79eff0-434b-41a8-a816-ef4e93721f92",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod"
+              ],
+              "username": "",
+              "ranks": []
+            }
+          ]
+        },
+        "effects": {
+          "id": "bdfd71f5-c9f8-4f95-96f7-75dee7968658",
+          "list": [
+            {
+              "id": "4589f18c-7bc2-4283-b34f-f38b51e44fc4",
+              "active": true,
+              "type": "firebot:chat",
+              "chatter": "Bot",
+              "message": "Use: !acronym add GPU | !acronym remove GPU",
+              "sendAsReply": true
+            }
+          ]
+        },
+        "subCommands": [
+          {
+            "id": "d82d9b3c-f32d-4790-93df-9c8c123d1856",
+            "arg": "add",
+            "usage": "add GPU",
+            "active": true,
+            "regex": false,
+            "minArgs": 2,
+            "description": "Add acronyms read letter by letter",
+            "effects": {
+              "id": "5e696b2e-d5f8-423e-821e-c598fb13d57c",
+              "list": [
+                {
+                  "id": "b4a23630-5bfb-445e-b44c-2897f700d686",
+                  "active": true,
+                  "type": "firebot:http-request",
+                  "url": "%TellbirdAddress%/api/lists/acronyms/add",
+                  "method": "POST",
+                  "body": "$arg[2,last]",
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000,
+                    "runEffectsOnError": false
+                  },
+                  "errorEffects": {
+                    "id": "ba69a653-a0e2-4674-bdf1-76c48fc075b3",
+                    "list": []
+                  }
+                },
+                {
+                  "id": "1e324c1a-d2c8-428c-bc23-c50fd6b909af",
+                  "active": true,
+                  "type": "firebot:chat",
+                  "chatter": "Bot",
+                  "message": "$effectOutput[httpResponse, null, Tellbird did not answer. Is it running?]",
+                  "sendAsReply": true
+                }
+              ]
+            }
+          },
+          {
+            "id": "76a3f576-8dd6-4de1-9117-8cbe6165d909",
+            "arg": "remove",
+            "usage": "remove GPU",
+            "active": true,
+            "regex": false,
+            "minArgs": 2,
+            "description": "Remove acronyms read letter by letter",
+            "effects": {
+              "id": "b169a7aa-d693-4519-b05b-3ee8288f49d2",
+              "list": [
+                {
+                  "id": "268c0b20-cedd-4f1e-a71c-0aa32462f848",
+                  "active": true,
+                  "type": "firebot:http-request",
+                  "url": "%TellbirdAddress%/api/lists/acronyms/remove",
+                  "method": "POST",
+                  "body": "$arg[2,last]",
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000,
+                    "runEffectsOnError": false
+                  },
+                  "errorEffects": {
+                    "id": "599cc720-1834-4082-ad5f-f3676ae0130a",
+                    "list": []
+                  }
+                },
+                {
+                  "id": "6d34fb30-cbb9-4ef1-b389-ee24a16be85e",
+                  "active": true,
+                  "type": "firebot:chat",
+                  "chatter": "Bot",
+                  "message": "$effectOutput[httpResponse, null, Tellbird did not answer. Is it running?]",
+                  "sendAsReply": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "3bebd114-73ea-4046-bee3-ab5b2d48dcf4",
+        "type": "custom",
+        "active": true,
+        "simple": false,
+        "trigger": "!abbreviation",
+        "aliases": [
+          "!abbr"
+        ],
+        "createdBy": "Tellbird",
+        "description": "Tellbird: add or remove chat abbreviations.",
+        "usage": "!abbreviation add brb = be right back | !abbreviation remove brb",
+        "cooldown": {
+          "global": 0,
+          "user": 0
+        },
+        "ignoreBot": true,
+        "restrictionData": {
+          "mode": "all",
+          "sendFailMessage": true,
+          "restrictions": [
+            {
+              "id": "0e6fa5e0-8bf9-4826-8cef-d99124e86a2e",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod"
+              ],
+              "username": "",
+              "ranks": []
+            }
+          ]
+        },
+        "effects": {
+          "id": "0e2f7375-a82a-47ae-8a62-9c0a4aefc5d3",
+          "list": [
+            {
+              "id": "3679460d-98e0-4078-a6e8-ed4e32451342",
+              "active": true,
+              "type": "firebot:chat",
+              "chatter": "Bot",
+              "message": "Use: !abbreviation add brb = be right back | !abbreviation remove brb",
+              "sendAsReply": true
+            }
+          ]
+        },
+        "subCommands": [
+          {
+            "id": "45f47b3b-d115-454a-afb6-e3e067f013d2",
+            "arg": "add",
+            "usage": "add brb = be right back",
+            "active": true,
+            "regex": false,
+            "minArgs": 2,
+            "description": "Add chat abbreviations",
+            "effects": {
+              "id": "cea8f32c-b9f4-4671-8f84-655671062a62",
+              "list": [
+                {
+                  "id": "8455dfa7-a0ab-4021-ab75-dc2c6680f89b",
+                  "active": true,
+                  "type": "firebot:http-request",
+                  "url": "%TellbirdAddress%/api/lists/abbreviations/add",
+                  "method": "POST",
+                  "body": "$arg[2,last]",
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000,
+                    "runEffectsOnError": false
+                  },
+                  "errorEffects": {
+                    "id": "4a9424bc-f65e-4d89-a3c8-1f84d2df5a23",
+                    "list": []
+                  }
+                },
+                {
+                  "id": "ba84eb52-726b-422c-881b-29bfbae2eaae",
+                  "active": true,
+                  "type": "firebot:chat",
+                  "chatter": "Bot",
+                  "message": "$effectOutput[httpResponse, null, Tellbird did not answer. Is it running?]",
+                  "sendAsReply": true
+                }
+              ]
+            }
+          },
+          {
+            "id": "8a549b44-7604-466d-bb67-3b63f297c225",
+            "arg": "remove",
+            "usage": "remove brb",
+            "active": true,
+            "regex": false,
+            "minArgs": 2,
+            "description": "Remove chat abbreviations",
+            "effects": {
+              "id": "1126d580-89b8-4cfb-b97b-4e54cd0e6399",
+              "list": [
+                {
+                  "id": "044a38ff-b08b-42e6-a607-9dc8b1936fdd",
+                  "active": true,
+                  "type": "firebot:http-request",
+                  "url": "%TellbirdAddress%/api/lists/abbreviations/remove",
+                  "method": "POST",
+                  "body": "$arg[2,last]",
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000,
+                    "runEffectsOnError": false
+                  },
+                  "errorEffects": {
+                    "id": "507e42f0-37bd-4bb2-97f4-937c852e89ec",
+                    "list": []
+                  }
+                },
+                {
+                  "id": "988d2016-bc96-4a5e-8f44-fde0b5815430",
+                  "active": true,
+                  "type": "firebot:chat",
+                  "chatter": "Bot",
+                  "message": "$effectOutput[httpResponse, null, Tellbird did not answer. Is it running?]",
+                  "sendAsReply": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "1011be23-65cc-4dae-800a-75ac4629e58b",
+        "type": "custom",
+        "active": true,
+        "simple": false,
+        "trigger": "!ttsemote",
+        "aliases": [],
+        "createdBy": "Tellbird",
+        "description": "Tellbird: add or remove emotes Tellbird leaves out.",
+        "usage": "!ttsemote add catJAM | !ttsemote remove catJAM",
+        "cooldown": {
+          "global": 0,
+          "user": 0
+        },
+        "ignoreBot": true,
+        "restrictionData": {
+          "mode": "all",
+          "sendFailMessage": true,
+          "restrictions": [
+            {
+              "id": "e7fb3cf2-1274-4fef-ba33-2a00d1546024",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod"
+              ],
+              "username": "",
+              "ranks": []
+            }
+          ]
+        },
+        "effects": {
+          "id": "9b63dd03-d87d-441d-933a-9128846707d1",
+          "list": [
+            {
+              "id": "472679cd-317d-42d6-9b68-ec3ce111f1ea",
+              "active": true,
+              "type": "firebot:chat",
+              "chatter": "Bot",
+              "message": "Use: !ttsemote add catJAM | !ttsemote remove catJAM",
+              "sendAsReply": true
+            }
+          ]
+        },
+        "subCommands": [
+          {
+            "id": "15e0658f-4fca-489d-a995-b28dea0e3def",
+            "arg": "add",
+            "usage": "add catJAM",
+            "active": true,
+            "regex": false,
+            "minArgs": 2,
+            "description": "Add emotes Tellbird leaves out",
+            "effects": {
+              "id": "ac1bea15-0c17-4888-8ded-81c4972c06bb",
+              "list": [
+                {
+                  "id": "5eb142ea-24e9-42b8-80d1-9d4139f36074",
+                  "active": true,
+                  "type": "firebot:http-request",
+                  "url": "%TellbirdAddress%/api/lists/emotes/add",
+                  "method": "POST",
+                  "body": "$arg[2,last]",
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000,
+                    "runEffectsOnError": false
+                  },
+                  "errorEffects": {
+                    "id": "cfbef438-a379-4576-aba5-7f70142f7b09",
+                    "list": []
+                  }
+                },
+                {
+                  "id": "4d8cfde6-4e2d-45d3-a620-7e2566186c9a",
+                  "active": true,
+                  "type": "firebot:chat",
+                  "chatter": "Bot",
+                  "message": "$effectOutput[httpResponse, null, Tellbird did not answer. Is it running?]",
+                  "sendAsReply": true
+                }
+              ]
+            }
+          },
+          {
+            "id": "cf34fac9-4031-4591-a820-3a464ab4e55e",
+            "arg": "remove",
+            "usage": "remove catJAM",
+            "active": true,
+            "regex": false,
+            "minArgs": 2,
+            "description": "Remove emotes Tellbird leaves out",
+            "effects": {
+              "id": "411dc3f4-bd3e-4199-9009-5bf5918337ef",
+              "list": [
+                {
+                  "id": "4c788755-1625-4a55-88e4-eb36a629f350",
+                  "active": true,
+                  "type": "firebot:http-request",
+                  "url": "%TellbirdAddress%/api/lists/emotes/remove",
+                  "method": "POST",
+                  "body": "$arg[2,last]",
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000,
+                    "runEffectsOnError": false
+                  },
+                  "errorEffects": {
+                    "id": "e1f20103-5c3e-4fe7-a0ea-b248d22723f9",
+                    "list": []
+                  }
+                },
+                {
+                  "id": "e6a6bc00-42ad-4be8-9fab-49824195c057",
+                  "active": true,
+                  "type": "firebot:chat",
+                  "chatter": "Bot",
+                  "message": "$effectOutput[httpResponse, null, Tellbird did not answer. Is it running?]",
+                  "sendAsReply": true
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "counters": [],
+    "currencies": [],
+    "effectQueues": [],
+    "events": [],
+    "eventGroups": [],
+    "hotkeys": [],
+    "presetEffectLists": [],
+    "timers": [],
+    "scheduledTasks": [],
+    "variableMacros": [],
+    "viewerRoles": [],
+    "viewerRankLadders": [],
+    "quickActions": [],
+    "overlayWidgetConfigs": [],
+    "globalValues": []
+  }
+}

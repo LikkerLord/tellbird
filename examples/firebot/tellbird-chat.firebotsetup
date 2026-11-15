@@ -1,0 +1,578 @@
+{
+  "name": "Tellbird chat with TTS names",
+  "description": "Reads Twitch chat through Tellbird (Mode: http) as \"name says: message\". Subs, VIPs and mods can pick the name Tellbird uses for them with !ttsname. Mods: !changename @user name, !removename @user, !revokename @user. Streamer: !clearnames. Plus Skip TTS / Clear TTS queue quick actions.",
+  "version": 1,
+  "author": "DesignedByJoe, adapted for Tellbird",
+  "components": {
+    "commands": [
+      {
+        "active": true,
+        "simple": false,
+        "sendCooldownMessage": true,
+        "cooldownMessage": "This command is still on cooldown for: {timeLeft}",
+        "cooldown": {},
+        "effects": {
+          "id": "bcf1019a-a2ff-4112-b7c2-ac0d79bba6e7",
+          "list": [
+            {
+              "id": "8a0691e1-fb98-4c89-b77f-d520219cbfe5",
+              "type": "firebot:http-request",
+              "active": true,
+              "headers": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "options": {
+                "timeout": 5000
+              },
+              "url": "%TellbirdAddress%/tts",
+              "method": "POST",
+              "percentWeight": null,
+              "body": "$userMetadata[$user, TTS_Name, $userDisplayName] is now known as $arg[all]"
+            },
+            {
+              "id": "01cd782e-46d6-4e87-b6fb-1a95e0df8720",
+              "type": "firebot:set-user-metadata",
+              "active": true,
+              "username": "$username",
+              "key": "TTS_Name",
+              "data": "$arg[all]",
+              "percentWeight": null
+            }
+          ],
+          "runMode": "all"
+        },
+        "restrictionData": {
+          "restrictions": [
+            {
+              "id": "4b81b76e-f369-4f7c-a0dd-4c410254e87a",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod",
+                "vip",
+                "sub",
+                "tier1",
+                "tier2",
+                "tier3"
+              ],
+              "ranks": []
+            },
+            {
+              "id": "3e05b6ea-a86e-4831-a5e7-1b006e425880",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "22a02a6b-8ed2-4906-b5eb-ffaa3cf917a9"
+              ],
+              "ranks": [],
+              "invertCondition": true
+            }
+          ],
+          "mode": "all",
+          "sendFailMessage": false,
+          "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+          "sendAsReply": false,
+          "useCustomFailMessage": true
+        },
+        "aliases": [],
+        "treatQuotedTextAsSingleArg": true,
+        "allowTriggerBySharedChat": "inherit",
+        "sendCooldownMessageAsReply": true,
+        "trigger": "!ttsname",
+        "description": "Set your TTS Name",
+        "id": "05001470-76a0-4408-b149-1dcd486e4499",
+        "createdBy": "Tellbird",
+        "type": "custom",
+        "minArgs": 1,
+        "usage": "!ttsname YourName"
+      },
+      {
+        "active": true,
+        "simple": false,
+        "sendCooldownMessage": true,
+        "cooldownMessage": "This command is still on cooldown for: {timeLeft}",
+        "cooldown": {},
+        "effects": {
+          "id": "508cfea7-e551-433b-ada4-54d0b23e2884",
+          "list": [],
+          "runMode": "all"
+        },
+        "restrictionData": {
+          "restrictions": [
+            {
+              "id": "3ea6b9d1-0474-4e30-bfa9-fb17666b0f47",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod"
+              ],
+              "ranks": []
+            }
+          ],
+          "mode": "all",
+          "sendFailMessage": true,
+          "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+          "sendAsReply": false
+        },
+        "aliases": [],
+        "treatQuotedTextAsSingleArg": true,
+        "allowTriggerBySharedChat": "inherit",
+        "sendCooldownMessageAsReply": true,
+        "trigger": "!changename",
+        "description": "Change a TTS Name (!changename @user name)",
+        "id": "10437c8a-7511-4358-8032-6871360553be",
+        "createdBy": "Tellbird",
+        "type": "custom",
+        "subCommands": [
+          {
+            "active": true,
+            "id": "b6e8c7dd-1259-4d18-b25b-a38101f73bc9",
+            "type": "Username",
+            "arg": "@\\w+",
+            "regex": true,
+            "usage": "@username NewName",
+            "fallback": false,
+            "restrictionData": {
+              "restrictions": [],
+              "mode": "all",
+              "sendFailMessage": true,
+              "useCustomFailMessage": false,
+              "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+              "sendAsReply": false
+            },
+            "effects": {
+              "id": "ae1d5c19-c22f-4d6b-a00a-715f44b1dd9c",
+              "list": [
+                {
+                  "id": "41780d64-6d07-4744-9087-243a8fbed3f9",
+                  "type": "firebot:http-request",
+                  "active": true,
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000
+                  },
+                  "url": "%TellbirdAddress%/tts",
+                  "method": "POST",
+                  "percentWeight": null,
+                  "body": "$user has changed $target's name to $arg[2,last]"
+                },
+                {
+                  "id": "5b67cbed-d218-4098-a143-3aba376497f5",
+                  "type": "firebot:set-user-metadata",
+                  "active": true,
+                  "username": "$target",
+                  "key": "TTS_Name",
+                  "data": "$arg[2,last]",
+                  "percentWeight": null
+                }
+              ],
+              "runMode": "all"
+            },
+            "minArgs": 2
+          }
+        ]
+      },
+      {
+        "active": true,
+        "simple": false,
+        "sendCooldownMessage": true,
+        "cooldownMessage": "This command is still on cooldown for: {timeLeft}",
+        "cooldown": {},
+        "effects": {
+          "id": "8aedb7af-86b9-4fa5-aecb-70d187732e69",
+          "list": [],
+          "runMode": "all"
+        },
+        "restrictionData": {
+          "restrictions": [
+            {
+              "id": "ea9d97ab-f40e-41d9-8102-42fcb5a650a6",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod"
+              ],
+              "ranks": []
+            }
+          ],
+          "mode": "all",
+          "sendFailMessage": true,
+          "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+          "sendAsReply": false
+        },
+        "aliases": [],
+        "treatQuotedTextAsSingleArg": true,
+        "allowTriggerBySharedChat": "inherit",
+        "sendCooldownMessageAsReply": true,
+        "trigger": "!removename",
+        "description": "Remove a TTS Name (!removename @user)",
+        "id": "567a43bd-0b0c-4895-af50-bb1dfbfa2861",
+        "createdBy": "Tellbird",
+        "type": "custom",
+        "subCommands": [
+          {
+            "active": true,
+            "id": "c39867e7-52df-403b-865f-56768a23128f",
+            "type": "Username",
+            "arg": "@\\w+",
+            "regex": true,
+            "usage": "@username",
+            "fallback": false,
+            "restrictionData": {
+              "restrictions": [],
+              "mode": "all",
+              "sendFailMessage": true,
+              "useCustomFailMessage": false,
+              "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+              "sendAsReply": false
+            },
+            "effects": {
+              "id": "5d67d999-f2c4-4d0a-877e-59df596fca3f",
+              "list": [
+                {
+                  "id": "8b26af9a-0ded-44b2-82de-3c3d952fa451",
+                  "type": "firebot:remove-user-metadata",
+                  "active": true,
+                  "username": "$target",
+                  "key": "TTS_Name",
+                  "percentWeight": null
+                }
+              ],
+              "runMode": "all"
+            },
+            "minArgs": 1
+          }
+        ]
+      },
+      {
+        "active": true,
+        "simple": false,
+        "sendCooldownMessage": true,
+        "cooldownMessage": "This command is still on cooldown for: {timeLeft}",
+        "cooldown": {},
+        "effects": {
+          "id": "e1b50322-7aed-4f91-9eef-57f6767fcfa9",
+          "list": [],
+          "runMode": "all"
+        },
+        "restrictionData": {
+          "restrictions": [
+            {
+              "id": "82a690fc-09dd-43c0-8898-a78f3f0944ea",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster",
+                "mod"
+              ],
+              "ranks": []
+            }
+          ],
+          "mode": "all",
+          "sendFailMessage": true,
+          "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+          "sendAsReply": false
+        },
+        "aliases": [],
+        "treatQuotedTextAsSingleArg": true,
+        "allowTriggerBySharedChat": "inherit",
+        "sendCooldownMessageAsReply": true,
+        "trigger": "!revokename",
+        "description": "Remove a TTS Name and Permissions (!revokename @user)",
+        "id": "da1d102b-b430-4d7e-946e-6cb9b5e55561",
+        "createdBy": "Tellbird",
+        "type": "custom",
+        "subCommands": [
+          {
+            "active": true,
+            "id": "98e51e32-fee0-4c41-9a93-8f5e4042c8bf",
+            "type": "Username",
+            "arg": "@\\w+",
+            "regex": true,
+            "usage": "@username",
+            "fallback": false,
+            "restrictionData": {
+              "restrictions": [],
+              "mode": "all",
+              "sendFailMessage": true,
+              "useCustomFailMessage": false,
+              "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+              "sendAsReply": false
+            },
+            "effects": {
+              "id": "12de564c-f50a-48c5-810c-e3021a644c3e",
+              "list": [
+                {
+                  "id": "c795b250-66cb-4f75-8ee4-8810a105d88b",
+                  "type": "firebot:http-request",
+                  "active": true,
+                  "headers": [
+                    {
+                      "key": "Content-Type",
+                      "value": "text/plain"
+                    }
+                  ],
+                  "options": {
+                    "timeout": 5000
+                  },
+                  "url": "%TellbirdAddress%/tts",
+                  "method": "POST",
+                  "percentWeight": null,
+                  "body": "$target's TTS name was reset, and they can't set a new one."
+                },
+                {
+                  "id": "f97ad81e-b92a-48ad-bfe8-b21bc609e777",
+                  "type": "firebot:remove-user-metadata",
+                  "active": true,
+                  "username": "$target",
+                  "key": "TTS_Name",
+                  "percentWeight": null
+                },
+                {
+                  "id": "33437a7c-6813-40ce-8dbb-e3598e8ae434",
+                  "type": "firebot:update-roles",
+                  "active": true,
+                  "viewerType": "custom",
+                  "addRoleId": "22a02a6b-8ed2-4906-b5eb-ffaa3cf917a9",
+                  "customViewer": "$target",
+                  "percentWeight": null
+                }
+              ],
+              "runMode": "all"
+            },
+            "minArgs": 1
+          }
+        ]
+      },
+      {
+        "active": true,
+        "simple": false,
+        "sendCooldownMessage": true,
+        "cooldownMessage": "This command is still on cooldown for: {timeLeft}",
+        "cooldown": {},
+        "effects": {
+          "id": "0104f6e1-ba44-4330-a1a1-b4e9f48a9b55",
+          "list": [
+            {
+              "id": "f638dc40-e4c3-493f-b03b-e7d71d4f6680",
+              "type": "firebot:loopeffects",
+              "active": true,
+              "effectList": {
+                "id": "cb5c768b-79c1-4d91-89ae-12533f36a76c",
+                "list": [
+                  {
+                    "id": "9a57f445-952f-4b8d-a202-acc79524164a",
+                    "type": "firebot:conditional-effects",
+                    "active": true,
+                    "ifs": [
+                      {
+                        "conditionData": {
+                          "mode": "exclusive",
+                          "conditions": [
+                            {
+                              "type": "firebot:custom",
+                              "comparisonType": "is not",
+                              "value": null,
+                              "leftSideValue": "$userMetadata[$loopItem, TTS_Name]",
+                              "rightSideValue": "$null"
+                            }
+                          ]
+                        },
+                        "effectData": {
+                          "id": "9f93142a-980c-42f0-bd31-c9a540fa74f1",
+                          "list": [
+                            {
+                              "id": "94d1f694-fb67-44c8-918f-fbeb9593dff9",
+                              "type": "firebot:remove-user-metadata",
+                              "active": true,
+                              "username": "$loopItem",
+                              "key": "TTS_Name",
+                              "percentWeight": null
+                            }
+                          ],
+                          "runMode": "all"
+                        }
+                      }
+                    ],
+                    "otherwiseEffectData": {
+                      "id": "8b936158-edc1-4de8-b584-ec03480f4e55",
+                      "list": [],
+                      "runMode": "all"
+                    },
+                    "percentWeight": null
+                  }
+                ],
+                "runMode": "all"
+              },
+              "loopMode": "array",
+              "conditionData": {
+                "mode": "exclusive",
+                "conditions": []
+              },
+              "arrayToIterate": "$usernameArray",
+              "percentWeight": null
+            }
+          ],
+          "runMode": "all"
+        },
+        "restrictionData": {
+          "restrictions": [
+            {
+              "id": "cd2bbb69-2a24-4891-b376-b299f513afdd",
+              "type": "firebot:permissions",
+              "mode": "roles",
+              "roleIds": [
+                "broadcaster"
+              ],
+              "ranks": []
+            }
+          ],
+          "mode": "all",
+          "sendFailMessage": true,
+          "failMessage": "Sorry @{user}, you cannot use this command because: {reason}",
+          "sendAsReply": false
+        },
+        "aliases": [],
+        "treatQuotedTextAsSingleArg": false,
+        "allowTriggerBySharedChat": "inherit",
+        "sendCooldownMessageAsReply": true,
+        "trigger": "!clearnames",
+        "description": "Wipes all custom names from the database",
+        "id": "bb329e32-450a-45aa-a808-1441e0e6a1f4",
+        "createdBy": "Tellbird",
+        "type": "custom"
+      }
+    ],
+    "counters": [],
+    "currencies": [],
+    "effectQueues": [],
+    "events": [
+      {
+        "name": "Tellbird: read chat",
+        "active": true,
+        "eventId": "chat-message",
+        "sourceId": "twitch",
+        "filterData": {
+          "mode": "exclusive",
+          "filters": []
+        },
+        "effects": {
+          "id": "831a3483-20b0-46a1-80a3-f8bdc75e996b",
+          "list": [
+            {
+              "id": "396eea60-66aa-498b-b826-78ff633e9ff0",
+              "type": "firebot:http-request",
+              "active": true,
+              "headers": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "options": {
+                "timeout": 5000
+              },
+              "url": "%TellbirdAddress%/tts?user=$username&name=$encodeForUrl[$userMetadata[$username, TTS_Name, $userDisplayName]]",
+              "method": "POST",
+              "percentWeight": null,
+              "body": "$chatMessageTextOnly[true]"
+            }
+          ],
+          "runMode": "all"
+        },
+        "id": "d5e3f467-5c49-45f9-96cd-1395d05a421b"
+      }
+    ],
+    "eventGroups": [],
+    "hotkeys": [],
+    "presetEffectLists": [],
+    "timers": [],
+    "scheduledTasks": [],
+    "variableMacros": [],
+    "viewerRoles": [
+      {
+        "name": "TTS name revoked",
+        "showBadgeInChat": false,
+        "viewers": [],
+        "id": "22a02a6b-8ed2-4906-b5eb-ffaa3cf917a9"
+      }
+    ],
+    "viewerRankLadders": [],
+    "quickActions": [
+      {
+        "id": "e6ba95f1-4cfd-4430-b141-6919984ad3a1",
+        "name": "Skip TTS",
+        "type": "custom",
+        "icon": "fad fa-angle-double-right",
+        "presetListId": null,
+        "presetArgValues": {},
+        "promptForArgs": false,
+        "effectList": {
+          "id": "ad396f2e-305d-45ff-80c4-e66610e9beca",
+          "list": [
+            {
+              "id": "22020d3d-66b3-4e08-9d33-385cec775aec",
+              "type": "firebot:http-request",
+              "active": true,
+              "url": "%TellbirdAddress%/skip",
+              "method": "GET",
+              "headers": [],
+              "options": {
+                "timeout": 5000
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "2ee191e8-d302-41d0-99cf-06e45367246a",
+        "name": "Clear TTS queue",
+        "type": "custom",
+        "icon": "fad fa-trash",
+        "presetListId": null,
+        "presetArgValues": {},
+        "promptForArgs": false,
+        "effectList": {
+          "id": "dbc21968-de06-47e3-956d-9ba41605c0b9",
+          "list": [
+            {
+              "id": "a4c6fd53-df4c-42b8-8d43-976f12137a82",
+              "type": "firebot:http-request",
+              "active": true,
+              "url": "%TellbirdAddress%/clear",
+              "method": "GET",
+              "headers": [],
+              "options": {
+                "timeout": 5000
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "overlayWidgetConfigs": [],
+    "globalValues": []
+  },
+  "requireCurrency": false,
+  "importQuestions": [
+    {
+      "id": "b7e6d56f-6d64-478c-8a7d-0d1c50f02d2f",
+      "replaceToken": "%TellbirdAddress%",
+      "answerType": "text",
+      "question": "Tellbird's address",
+      "helpText": "Where Tellbird's panel opens, without a trailing slash. Only change it if you changed Tellbird's HTTP host or port.",
+      "defaultAnswer": "http://127.0.0.1:5050"
+    }
+  ]
+}

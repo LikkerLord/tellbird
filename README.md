@@ -134,10 +134,31 @@ the repeat filters go by, so send it whenever you have it. Text is spoken as
 it is, unless you also send `name`: then Tellbird reads it like Twitch chat,
 e.g. "Alice says: hello", following **Read username** and **Username format**.
 
+**Firebot: read chat with custom names.** Import
+[`tellbird-chat.firebotsetup`](examples/firebot/tellbird-chat.firebotsetup)
+(set **Mode** to `http` first). Every chat message is then read as
+"name says: message", where the name is the chatter's display name, or the
+one they picked:
+
+- `!ttsname Big Al` - subs, VIPs and mods pick the name Tellbird uses for them
+- `!changename @user Name`, `!removename @user` - mods change or remove one
+- `!revokename @user` - mods remove someone's name and stop them from setting
+  a new one (they get the "TTS name revoked" role in Firebot)
+- `!clearnames` - the streamer removes all custom names
+
+It also adds **Skip TTS** and **Clear TTS queue** quick actions. Bots and
+`!commands` are skipped by Tellbird itself: add your Firebot bot account to
+**Ignored users** on the panel, or its replies get read too. Thanks to
+DesignedByJoe for the original setup.
+
 > **Send the message exactly as it was written, capitals included.** Tellbird
 > tells the acronym "IT" (read "I-T") from the word "it" by its capitals. If
 > your bot sends the text in all lowercase, or uses a variable that does,
 > capitalised acronyms are read as plain words.
+
+**Firebot reactions to filters:** Tellbird can also *trigger* Firebot when a
+filter catches spam - e.g. to time someone out. See **Firebot actions** on
+the Settings tab.
 
 ## Bot commands for the word lists
 
@@ -162,9 +183,18 @@ saved to the word list files.
 Tellbird can't tell who ran the command, so **limit these commands to mods**
 (or just yourself) in your bot's command settings.
 
-**Firebot reactions to filters:** Tellbird can also *trigger* Firebot when a
-filter catches spam - e.g. to time someone out. See **Firebot actions** on
-the Settings tab.
+**Firebot: ready-made commands.** Import
+[`tellbird-word-lists.firebotsetup`](examples/firebot/tellbird-word-lists.firebotsetup)
+with Firebot's **Import Setup** (File menu). It adds three commands for mods
+and the streamer, and the bot replies with Tellbird's answer:
+
+- `!acronym add GPU` / `!acronym remove GPU`
+- `!abbreviation add brb = be right back` / `!abbreviation remove brb` (or `!abbr`)
+- `!ttsemote add catJAM` / `!ttsemote remove catJAM`
+
+Firebot asks for Tellbird's address while importing; keep the default unless
+you changed Tellbird's HTTP host or port. You can rename the commands
+afterwards.
 
 ## Troubleshooting
 
