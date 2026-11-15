@@ -96,6 +96,9 @@ marked *restart* need Tellbird to be restarted. Highlights:
 - **Filters** - collapse "aaaaaa", "lol lol lol lol", repeated phrases; skip
   word spam, very long words, repeated messages and copypasta floods.
 - **Abbreviations** - teach it chat slang ("brb" -> "be right back").
+- **Acronyms** - words read letter by letter ("GPU" -> "G-P-U"). Written in
+  capitals, an entry only matches capitals, so "IT" leaves the word "it" alone;
+  in lowercase it matches any case.
 - **Emotes** - names of BTTV/FFZ/7TV emotes to leave out (Twitch's own emotes
   are removed automatically).
 

@@ -8,13 +8,18 @@ import time
 import urllib.request
 
 from . import firebot, startup
-from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, ConfigError, RunningConfig,
-                     coerce, model_name, read_config_file, read_word_lists, write_config,
-                     write_json)
+from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, WORD_LISTS, ConfigError,
+                     RunningConfig, coerce, model_name, read_config_file, read_word_lists,
+                     write_config, write_json)
 from .speechqueue import QueueItem, SpeechQueue
 from .textproc import ChatFilter, WordLists, strip_native_emotes
 
 log = logging.getLogger("tellbird")
+
+
+def _changed_lists(new, old):
+    """Names of the word lists that differ between two WordLists."""
+    return [name for name in WORD_LISTS if getattr(new, name) != getattr(old, name)]
 
 
 class Bot:
@@ -35,7 +40,7 @@ class Bot:
         for w in warnings:
             log.warning(f"[config] {w}")
         self.settings, _ = self.running.apply(values)
-        self.word_lists = WordLists(*read_word_lists(paths.abbreviations, paths.emotes))
+        self.word_lists = WordLists(**read_word_lists(paths))
         self.chat_filter = ChatFilter(self.settings, self.word_lists, on_filter=self._on_filter)
         if speaker is not None:
             speaker.set_voice(self.settings["voice"])
@@ -107,12 +112,12 @@ class Bot:
 
     # --------------------------- Config reload/save ---------------------------
     async def reload_config(self):
-        """Re-read config.json, abbreviations.json and emotes.json and apply
-        them to the running bot. Returns a summary dict for the panel / log."""
+        """Re-read config.json and the word lists and apply them to the
+        running bot. Returns a summary dict for the panel / log."""
         loop = asyncio.get_running_loop()
         async with self._reload_lock:
             values, warnings = read_config_file(self.paths.config)
-            word_lists = WordLists(*read_word_lists(self.paths.abbreviations, self.paths.emotes))
+            word_lists = WordLists(**read_word_lists(self.paths))
             old_voice = self.settings["voice"]
             if values["voice"] != old_voice:
                 try:
@@ -123,10 +128,7 @@ class Bot:
                     values["voice"] = old_voice
             self.settings, changed = self.running.apply(values)
             self.chat_filter.settings = self.settings
-            if word_lists.abbreviations != self.word_lists.abbreviations:
-                changed.add("abbreviations")
-            if word_lists.emotes != self.word_lists.emotes:
-                changed.add("emotes")
+            changed.update(_changed_lists(word_lists, self.word_lists))
             self.word_lists = self.chat_filter.word_lists = word_lists
             if "output_device" in changed:
                 self.speaker.set_output_device(self.settings["output_device"])
@@ -140,9 +142,11 @@ class Bot:
                      + (f", restart needed for: {', '.join(pending)}" if pending else ""))
             return {"changed": sorted(changed), "warnings": warnings, "restart_pending": pending}
 
-    async def save_config(self, updates, abbreviations=None, emotes=None):
-        """Validate panel edits, write them to the config files, then reload.
-        Raises ValueError with {key: message} on invalid input."""
+    async def save_config(self, updates, word_lists=None):
+        """Validate panel edits (settings, and {name: contents} for the word
+        lists being changed), write them to the files, then reload. Raises
+        ValueError with {key: message} on invalid input."""
+        word_lists = word_lists or {}
         loop = asyncio.get_running_loop()
         errors, clean = {}, {}
         for key, value in updates.items():
@@ -165,22 +169,22 @@ class Bot:
                 self.audio.check_output_device(clean["output_device"])
             except ValueError as e:
                 errors["output_device"] = str(e)
-        if abbreviations is not None and not (
-                isinstance(abbreviations, dict)
-                and all(isinstance(v, str) for v in abbreviations.values())):
-            errors["abbreviations"] = "must map each abbreviation to its expansion"
-        if emotes is not None and not (
-                isinstance(emotes, list) and all(isinstance(e, str) for e in emotes)):
-            errors["emotes"] = "must be a list of emote names"
+        for name, value in word_lists.items():
+            if name not in WORD_LISTS:
+                errors[name] = "unknown word list"
+            elif WORD_LISTS[name] is dict and not (
+                    isinstance(value, dict) and all(isinstance(v, str) for v in value.values())):
+                errors[name] = "must map each abbreviation to its expansion"
+            elif WORD_LISTS[name] is list and not (
+                    isinstance(value, list) and all(isinstance(v, str) for v in value)):
+                errors[name] = "must be a list of words"
         if errors:
             raise ValueError(errors)
         async with self._reload_lock:
             if clean:
                 write_config(self.paths.config, clean)
-            if abbreviations is not None:
-                write_json(self.paths.abbreviations, abbreviations)
-            if emotes is not None:
-                write_json(self.paths.emotes, emotes)
+            for name, value in word_lists.items():
+                write_json(self.paths.word_list(name), value)
         return await self.reload_config()
 
     def config_snapshot(self):
@@ -193,21 +197,15 @@ class Bot:
                 "config_path": str(self.paths.config)}
         try:
             values, warnings = read_config_file(self.paths.config)
-            abbreviations, emotes = read_word_lists(self.paths.abbreviations, self.paths.emotes)
+            saved_lists = read_word_lists(self.paths)
         except ConfigError as e:
             return {**snap, "error": str(e), "values": active,
-                    "abbreviations": self.word_lists.abbreviations,
-                    "emotes": self.word_lists.emotes}
+                    **{name: getattr(self.word_lists, name) for name in WORD_LISTS}}
         # Saved but not yet running, e.g. config.json was edited by hand.
         unapplied = sorted(k for k, v in values.items()
                            if not SCHEMA_BY_KEY[k].get("restart") and active.get(k) != v)
-        saved_lists = WordLists(abbreviations, emotes)
-        if saved_lists.abbreviations != self.word_lists.abbreviations:
-            unapplied.append("abbreviations")
-        if saved_lists.emotes != self.word_lists.emotes:
-            unapplied.append("emotes")
-        return {**snap, "values": values, "warnings": warnings,
-                "abbreviations": abbreviations, "emotes": emotes,
+        unapplied += _changed_lists(WordLists(**saved_lists), self.word_lists)
+        return {**snap, "values": values, "warnings": warnings, **saved_lists,
                 "restart_pending": self.running.restart_pending(values), "unapplied": unapplied}
 
     # ------------------------------- Startup ---------------------------------

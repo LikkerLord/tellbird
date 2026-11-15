@@ -253,14 +253,20 @@ def read_config_file(path):
     return resolve_config(cfg)
 
 
-def read_word_lists(abbreviations_path, emotes_path):
-    abbreviations = load_json(abbreviations_path, {}) or {}
-    emotes = load_json(emotes_path, []) or []
-    if not isinstance(abbreviations, dict):
-        raise ConfigError("abbreviations.json must contain a JSON object")
-    if not isinstance(emotes, list):
-        raise ConfigError("emotes.json must contain a JSON list")
-    return abbreviations, emotes
+# The word-list files next to config.json: name -> the JSON type each holds.
+WORD_LISTS = {"abbreviations": dict, "emotes": list, "acronyms": list}
+
+
+def read_word_lists(paths):
+    """-> {name: contents} for every word list; a missing file is empty."""
+    lists = {}
+    for name, kind in WORD_LISTS.items():
+        value = load_json(paths.word_list(name), kind()) or kind()
+        if not isinstance(value, kind):
+            raise ConfigError(f"{name}.json must contain a JSON "
+                              f"{'object' if kind is dict else 'list'}")
+        lists[name] = value
+    return lists
 
 
 class Settings:

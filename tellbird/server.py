@@ -8,7 +8,7 @@ import re
 from aiohttp import web
 
 from . import __version__
-from .config import ConfigError
+from .config import WORD_LISTS, ConfigError
 from .paths import ICON_PATH
 
 log = logging.getLogger("tellbird")
@@ -132,8 +132,9 @@ def create_app(bot):
         if not isinstance(body, dict):
             return web.json_response({"error": "expected a JSON object"}, status=400)
         try:
-            result = await bot.save_config(body.get("values") or {},
-                                           body.get("abbreviations"), body.get("emotes"))
+            result = await bot.save_config(
+                body.get("values") or {},
+                {name: body[name] for name in WORD_LISTS if body.get(name) is not None})
         except ValueError as e:
             return web.json_response({"errors": e.args[0]}, status=400)
         except (ConfigError, OSError) as e:

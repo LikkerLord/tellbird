@@ -6,16 +6,44 @@ import time
 from collections import Counter, deque
 
 URL_RE = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
+# How a spelled acronym's ending is written, e.g. "GPUs" -> "G-P-Us".
+PLURAL = {"s": "s", "'s": "'s"}
 
 
-# --------------------------- Abbreviations / emotes --------------------------
+# ------------------------------- Word lists ----------------------------------
+def is_shouting(text):
+    """True for a message mostly in capitals ("IT'S SO GOOD"), where a word in
+    capitals says nothing about it being an acronym."""
+    words = [w for w in text.split() if sum(c.isalpha() for c in w) >= 2]
+    caps = sum(w.isupper() for w in words)
+    return caps >= 2 and caps > len(words) / 2
+
+
+def spell(word):
+    """"GPU" -> "G-P-U": the form Pocket TTS reads letter by letter."""
+    return "-".join(c.upper() for c in word if c.isalnum())
+
+
 class WordLists:
-    """abbreviations.json (shorthand -> spoken words) and emotes.json
-    (third-party emote names to drop), normalized and compiled."""
+    """abbreviations.json (shorthand -> spoken words), emotes.json
+    (third-party emote names to drop) and acronyms.json (read letter by
+    letter), normalized and compiled.
 
-    def __init__(self, abbreviations=None, emotes=None):
+    An acronym with a capital letter only matches as written, so "IT" leaves
+    the word "it" alone; an all-lowercase one matches in any case."""
+
+    def __init__(self, abbreviations=None, emotes=None, acronyms=None):
         self.abbreviations = {str(k).lower(): str(v) for k, v in (abbreviations or {}).items()}
         self.emotes = [str(e) for e in (emotes or [])]
+        self.acronyms = [a for a in (str(a).strip() for a in (acronyms or [])) if a]
+        self._acronym_res = {}
+        for exact in (True, False):
+            group = [a for a in self.acronyms if (a != a.lower()) == exact]
+            if group:
+                # A plural or possessive ending is kept: "GPUs", "NPC's".
+                self._acronym_res[exact] = re.compile(
+                    r"\b(" + "|".join(re.escape(a) for a in sorted(group, key=len, reverse=True))
+                    + r")('s|s)?\b", 0 if exact else re.IGNORECASE)
         self._abbr_re = re.compile(
             r"\b(" + "|".join(re.escape(k) for k in
                               sorted(self.abbreviations, key=len, reverse=True)) + r")\b",
@@ -28,7 +56,16 @@ class WordLists:
 
     def __eq__(self, other):
         return (isinstance(other, WordLists) and self.abbreviations == other.abbreviations
-                and self.emotes == other.emotes)
+                and self.emotes == other.emotes and self.acronyms == other.acronyms)
+
+    def spell_acronyms(self, text):
+        # In a shouted message, a capitalised entry like "IT" is just a word.
+        shouting = is_shouting(text)
+        for exact, pattern in self._acronym_res.items():
+            if not (exact and shouting):
+                text = pattern.sub(lambda m: spell(m.group(1))
+                                   + PLURAL.get((m.group(2) or "").lower(), ""), text)
+        return text
 
     def expand_abbreviations(self, text):
         text = re.sub(r"\blo+l\b", "lol", text, flags=re.IGNORECASE)
@@ -228,6 +265,7 @@ class ChatFilter:
         if text is None:
             return None
         text = self.word_lists.expand_abbreviations(text)
+        text = self.word_lists.spell_acronyms(text)
         if len(text) > s["max_chars"]:
             text = text[:s["max_chars"]].rstrip() + " ..."
         if not text.endswith((".", "!", "?")):

@@ -132,3 +132,25 @@ def test_build_spoken():
     assert f.build_spoken("", "hi.") == "hi."
     f.settings = Settings.defaults(read_username=False)
     assert f.build_spoken("Alice", "hi.") == "hi."
+
+
+def test_spell_acronyms():
+    wl = WordLists(acronyms=["IT", "gpu", "ps5"])
+    assert wl.spell_acronyms("the IT guy said it broke") == "the I-T guy said it broke"
+    assert wl.spell_acronyms("my gpu and my GPU") == "my G-P-U and my G-P-U"
+    assert wl.spell_acronyms("two GPUs, the GPU's fan") == "two G-P-Us, the G-P-U's fan"
+    assert wl.spell_acronyms("on PS5 tonight") == "on P-S-5 tonight"
+    assert wl.spell_acronyms("gpus4all itself") == "gpus4all itself"      # whole words only
+
+
+def test_shouting_leaves_capitalised_acronyms_alone():
+    wl = WordLists(acronyms=["IT", "gpu"])
+    assert wl.spell_acronyms("IT'S SO GOOD") == "IT'S SO GOOD"
+    # Lowercase (any-case) entries still apply.
+    assert wl.spell_acronyms("MY GPU DIED") == "MY G-P-U DIED"
+    assert wl.spell_acronyms("MY GPUS DIED") == "MY G-P-Us DIED"
+
+
+def test_acronyms_after_abbreviations():
+    f, _, _ = make_filter(WordLists({"gg": "good game"}, acronyms=["gg", "IT"]))
+    assert f.clean_text("gg, IT is fixed") == "good game, I-T is fixed."

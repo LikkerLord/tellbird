@@ -107,7 +107,20 @@ def test_save_config_writes_file_and_applies(make_bot, paths):
         assert bot.chat_filter.clean_text("brb") == "be right back."
         text = paths.config.read_text()
         assert '"voice": "anna"' in text and "//" in text     # comments kept
-        assert json.loads(paths.abbreviations.read_text()) == {"brb": "be right back"}
+        assert json.loads(paths.word_list("abbreviations").read_text()) == {"brb": "be right back"}
+    with_client(make_bot, test)
+
+
+def test_acronyms_list_saves_and_applies(make_bot, paths):
+    async def test(client, bot):
+        snap = await (await client.get("/api/config")).json()
+        assert "IT" in snap["acronyms"]
+        r = await client.post("/api/config", json={"acronyms": ["NPC"]})
+        assert r.status == 200 and (await r.json())["changed"] == ["acronyms"]
+        assert json.loads(paths.word_list("acronyms").read_text()) == ["NPC"]
+        assert bot.chat_filter.clean_text("that NPC and IT") == "that N-P-C and IT."
+        r = await client.post("/api/config", json={"acronyms": "NPC"})
+        assert (await r.json())["errors"] == {"acronyms": "must be a list of words"}
     with_client(make_bot, test)
 
 

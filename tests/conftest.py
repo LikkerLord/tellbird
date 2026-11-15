@@ -58,6 +58,7 @@ def paths(tmp_path):
     shutil.copy(REPO / "config.example.json", tmp_path / "config.json")
     shutil.copy(REPO / "abbreviations.json", tmp_path / "abbreviations.json")
     shutil.copy(REPO / "emotes.json", tmp_path / "emotes.json")
+    shutil.copy(REPO / "acronyms.json", tmp_path / "acronyms.json")
     return Paths(tmp_path)
 
 

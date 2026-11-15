@@ -408,7 +408,7 @@
         <nav class="nav" id="nav"></nav>
         <div class="nav-foot" id="navFoot" hidden>
           Saved to <code id="configPath"></code>. Comments in the file are kept.
-          <button class="btn ghost sm" id="reloadBtn" title="Re-read config.json, abbreviations.json and emotes.json from disk"><svg class="i"><use href="#i-refresh"/></svg>Reload from file</button>
+          <button class="btn ghost sm" id="reloadBtn" title="Re-read config.json, abbreviations.json, acronyms.json and emotes.json from disk"><svg class="i"><use href="#i-refresh"/></svg>Reload from file</button>
         </div>
       </aside>
       <div>
@@ -670,14 +670,14 @@
 
   /* ---------------------------- settings ---------------------------- */
   const state = { loaded: false, snap: null, inputs: {}, errors: {} };
-  const WORD_LISTS = ['abbreviations', 'emotes'];
+  const WORD_LISTS = ['abbreviations', 'acronyms', 'emotes'];
   const SECTIONS = {
     'General':         { icon: 'general', text: 'Where Tellbird listens and how it sounds.' },
     'Speech':          { icon: 'speech',  text: 'What gets read aloud, and how.' },
     'Filters':         { icon: 'filter',  text: 'Tame chat spam before it reaches the voice.' },
     'Firebot actions': { icon: 'zap',     text: 'React in Firebot when a filter catches something.' },
     'Server':          { icon: 'server',  text: 'The local address of this panel and of /tts, /skip and /clear.' },
-    'Word lists':      { icon: 'book',    text: 'Chat slang to expand, and emotes to leave out.' },
+    'Word lists':      { icon: 'book',    text: 'Chat slang to expand, acronyms to spell out, and emotes to leave out.' },
   };
   const slug = name => 's-' + name.toLowerCase().replace(/[^a-z]+/g, '-');
 
@@ -788,7 +788,7 @@
     return null;
   }
 
-  // Word lists are edited as text: "abbr = expansion" lines / one emote per line.
+  // Word lists are edited as text: "abbr = expansion" lines / one entry per line.
   const abbrToText = obj => Object.entries(obj).map(([k, v]) => `${k} = ${v}`).join('\n');
   function textToAbbr(text){
     const out = {};
@@ -849,14 +849,19 @@
     abbr.value = abbrToText(s.abbreviations);
     state.inputs.abbreviations = { node: abbr, input: abbr, get: () => textToAbbr(abbr.value),
                                    set: v => abbr.value = abbrToText(v) };
-    const emotes = el('textarea', {id: 'f-emotes', rows: 8, spellcheck: false, class: 'mono'});
-    emotes.value = s.emotes.join('\n');
-    state.inputs.emotes = { node: emotes, input: emotes, get: () => emotes.value.split('\n').map(x => x.trim()).filter(Boolean),
-                            set: v => emotes.value = v.join('\n') };
+    for (const name of ['acronyms', 'emotes']){
+      const ta = el('textarea', {id: 'f-' + name, rows: 8, spellcheck: false, class: 'mono'});
+      ta.value = s[name].join('\n');
+      state.inputs[name] = { node: ta, input: ta, get: () => ta.value.split('\n').map(x => x.trim()).filter(Boolean),
+                             set: v => ta.value = v.join('\n') };
+    }
     cards.push(sectionCard('Word lists',
       fieldBlock('abbreviations', {label: 'Abbreviations',
                  help: 'Expanded when spoken. One per line, like: brb = be right back'},
                  state.inputs.abbreviations, {stack: true}),
+      fieldBlock('acronyms', {label: 'Acronyms to spell out',
+                 help: 'Read letter by letter (GPU becomes G-P-U), one per line. In capitals it only matches capitals, so IT leaves the word "it" alone. In lowercase it matches any case.'},
+                 state.inputs.acronyms, {stack: true}),
       fieldBlock('emotes', {label: 'Emotes to leave out',
                  help: 'BTTV / 7TV / FFZ emote names, one per line. Twitch\'s own emotes are removed automatically.'},
                  state.inputs.emotes, {stack: true})));
@@ -890,7 +895,7 @@
 
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-  // Collect edits: {values: {key: v}, abbreviations?, emotes?}, plus client-side errors.
+  // Collect edits: {values: {key: v}, plus any changed word list by name}, plus client-side errors.
   function collect(){
     const s = state.snap, changes = { values: {} }, errors = {};
     for (const [key, inp] of Object.entries(state.inputs)){

@@ -46,8 +46,9 @@ same settings folder.
 - Since there's no console window, the log goes to a file instead:
   `tellbird.log` next to `config.json` in the per-user folder below
   (capped at ~1 MB, with two older files kept as `tellbird.log.1`/`.2`).
-- On first run the app copies `config.json` / `abbreviations.json` /
-  `emotes.json` into a per-user folder so they stay editable:
+- The app copies `config.json` / `abbreviations.json` / `acronyms.json` /
+  `emotes.json` into a per-user folder (each one only if it isn't there yet)
+  so they stay editable:
   - Windows `%APPDATA%\tellbird`
   - macOS   `~/Library/Application Support/tellbird`
   - Linux   `~/.config/tellbird`

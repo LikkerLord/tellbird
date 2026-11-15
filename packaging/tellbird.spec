@@ -43,6 +43,7 @@ datas += [
     (root("config.example.json"), "."),
     (root("abbreviations.json"), "."),
     (root("emotes.json"), "."),
+    (root("acronyms.json"), "."),
     (root("tellbird", "panel.html"), "tellbird"),
     (root("tellbird", "assets", "icon.png"), os.path.join("tellbird", "assets")),
     (root("README.md"), "."),

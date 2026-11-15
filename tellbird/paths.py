@@ -11,6 +11,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .config import WORD_LISTS
+
 FROZEN = getattr(sys, "frozen", False)
 PACKAGE_DIR = Path(__file__).resolve().parent
 SOURCE_ROOT = PACKAGE_DIR.parent
@@ -28,13 +30,9 @@ class Paths:
     def config(self):
         return self.app_dir / "config.json"
 
-    @property
-    def abbreviations(self):
-        return self.app_dir / "abbreviations.json"
-
-    @property
-    def emotes(self):
-        return self.app_dir / "emotes.json"
+    def word_list(self, name):
+        """abbreviations.json and the like; see config.WORD_LISTS."""
+        return self.app_dir / f"{name}.json"
 
     @property
     def panel_html(self):
@@ -77,8 +75,7 @@ def _seed(app_dir, res_dir):
     """Copy the default files into app_dir unless the user already has them.
     config.example.json is the template for config.json."""
     for dst_name, src_name in (("config.json", "config.example.json"),
-                               ("abbreviations.json", "abbreviations.json"),
-                               ("emotes.json", "emotes.json")):
+                               *((f"{n}.json", f"{n}.json") for n in WORD_LISTS)):
         dst, src = app_dir / dst_name, res_dir / src_name
         if not dst.exists() and src.exists():
             shutil.copy(src, dst)
