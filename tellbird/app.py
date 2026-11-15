@@ -11,7 +11,7 @@ from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, ConfigError, Ru
                      coerce, model_name, read_config_file, read_word_lists, write_config,
                      write_json)
 from .speechqueue import QueueItem, SpeechQueue
-from .textproc import ChatFilter, WordLists
+from .textproc import ChatFilter, WordLists, strip_native_emotes
 
 log = logging.getLogger("tellbird")
 
@@ -56,7 +56,6 @@ class Bot:
         return item
 
     async def on_chat_message(self, login, display, message, emotes_tag):
-        from .textproc import strip_native_emotes
         if self.chat_filter.should_skip(login, message):
             return
         cleaned = self.chat_filter.clean_text(strip_native_emotes(message, emotes_tag), login)

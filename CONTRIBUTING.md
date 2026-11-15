@@ -28,6 +28,7 @@ settings folder, and the log goes to the console only.
 | `tellbird/twitch.py` | Twitch chat connection |
 | `tellbird/server.py` | Local HTTP server: panel, `/tts`, `/skip`, `/clear`, settings API |
 | `tellbird/tray.py` | System-tray icon |
+| `tellbird/startup.py` | Startup stages and download progress shown in the panel and tray |
 | `tellbird/paths.py`, `logs.py` | Where config/log files live, logging setup |
 | `tellbird/firebot.py` | Firebot actions when a filter fires |
 | `tellbird/panel.html` | The control panel (plain HTML/JS, built from the schema) |

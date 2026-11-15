@@ -11,6 +11,9 @@ class ConfigError(Exception):
     pass
 
 
+BARE_VALUE_RE = re.compile(r"[-+\w.]+")   # number, true/false/null
+
+
 def strip_comments(raw):
     # Drop whole-line // comments so config.json can be annotated.
     return "\n".join(l for l in raw.splitlines() if not l.lstrip().startswith("//"))
@@ -392,7 +395,7 @@ def _scan_members(raw):
         elif raw[i] == '"':
             i = string_end(i)
         else:
-            i = re.compile(r"[-+\w.]+").match(raw, i).end()
+            i = BARE_VALUE_RE.match(raw, i).end()
         if path is not None:
             spans[path] = (start, i)
 

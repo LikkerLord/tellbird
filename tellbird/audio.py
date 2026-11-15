@@ -162,10 +162,9 @@ class Speaker:
                 # Pocket TTS treats an unknown name as an audio file path, so
                 # the raw error is about reading audio files - not helpful
                 # for a typo.
-                from .config import KNOWN_VOICES
                 log.warning(f"[config] voice {name!r} failed to load: {e}")
                 raise ValueError(f"unknown voice {name!r} (built-in voices include: "
-                                 f"{', '.join(KNOWN_VOICES)})")
+                                 f"{', '.join(voice_names())})")
         return self._voice_states[name]
 
     def set_voice(self, name):
