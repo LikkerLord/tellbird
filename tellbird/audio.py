@@ -4,16 +4,48 @@ This is the only module that pulls in torch and PortAudio; everything else
 (and the tests) can be imported without them."""
 
 import contextlib
+import ctypes
 import inspect
 import logging
+import os
+import sys
 import threading
 import time
 from collections import Counter
 
-import numpy as np
-import sounddevice as sd
-
 log = logging.getLogger("tellbird")
+
+# Where distros keep libjack: PipeWire's own first (it shows PipeWire's devices
+# by their real names), then the regular one.
+SYSTEM_LIBJACK = ("/usr/lib64/pipewire-0.3/jack/libjack.so.0",
+                  "/usr/lib/x86_64-linux-gnu/pipewire-0.3/jack/libjack.so.0",
+                  "/usr/lib/aarch64-linux-gnu/pipewire-0.3/jack/libjack.so.0",
+                  "/usr/lib64/libjack.so.0",
+                  "/usr/lib/x86_64-linux-gnu/libjack.so.0",
+                  "/usr/lib/aarch64-linux-gnu/libjack.so.0",
+                  "/usr/lib/libjack.so.0")
+
+
+def _prefer_system_libjack():
+    """The Linux build bundles the build machine's libjack (PortAudio won't
+    load without one), but that one can't talk to PipeWire, so PortAudio then
+    lists only raw sound cards. Loading the system's first makes PortAudio
+    use it instead; the bundled one stays as the fallback."""
+    if not (getattr(sys, "frozen", False) and sys.platform.startswith("linux")):
+        return
+    for path in SYSTEM_LIBJACK:
+        if os.path.exists(path):
+            try:
+                ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
+                return
+            except OSError as e:
+                log.info(f"[audio] couldn't load {path}: {e}")
+
+
+_prefer_system_libjack()
+
+import numpy as np  # noqa: E402
+import sounddevice as sd  # noqa: E402
 
 
 def check_output_device(device):
