@@ -2,12 +2,14 @@ import asyncio
 import json
 import socket
 
+from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from conftest import FakeAudio, FakeSpeaker, run
-from tellbird.app import Bot
+from tellbird import __version__
+from tellbird.app import Bot, already_running
 from tellbird.config import Settings
-from tellbird.server import create_app
+from tellbird.server import APP_HEADER, create_app
 
 
 def with_client(make_bot, test):
@@ -291,5 +293,32 @@ def test_port_in_use_is_reported(paths):
                                      "http_port": taken.getsockname()[1]})
             await bot.run()
         assert bot.startup.stage == "failed"
-        assert "already running" in bot.startup.error
+        assert "another program" in bot.startup.error
+    run(go())
+
+
+def test_health_identifies_tellbird(make_bot):
+    async def test(client, bot):
+        r = await client.get("/health")
+        assert await r.text() == "ok" and r.headers[APP_HEADER] == __version__
+    with_client(make_bot, test)
+
+
+def test_already_running(make_bot):
+    async def go():
+        loop = asyncio.get_running_loop()
+        check = lambda port: loop.run_in_executor(None, already_running, "127.0.0.1", port)  # noqa: E731
+        async with TestServer(create_app(make_bot())) as tellbird:
+            assert await check(tellbird.port)
+        async def plain_ok(request):
+            return web.Response(text="ok")
+
+        other = web.Application()
+        other.router.add_get("/health", plain_ok)
+        async with TestServer(other) as server:
+            assert not await check(server.port)       # something else answers
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            free = s.getsockname()[1]
+        assert not await check(free)                  # nothing answers
     run(go())

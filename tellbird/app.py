@@ -5,6 +5,7 @@ import asyncio
 import logging
 import threading
 import time
+import urllib.request
 
 from . import firebot, startup
 from .config import (CONFIG_SCHEMA, KNOWN_VOICES, SCHEMA_BY_KEY, ConfigError, RunningConfig,
@@ -280,7 +281,9 @@ class Bot:
         try:
             await serve(self, self.settings["http_host"], port)
         except OSError as e:
-            self.startup.fail(f"Couldn't open port {port}. Is Tellbird already running? ({e})")
+            # Not another Tellbird (main() checked): something else has the port.
+            self.startup.fail(f"Couldn't open port {port}, another program may be using it. "
+                              f"Set a different http_port in config.json. ({e})")
             return
         await self._load_until_ready()
         tasks = [self.speech_worker()]
@@ -293,6 +296,19 @@ class Bot:
         else:
             self.startup.set(startup.READY)
         await asyncio.gather(*tasks)
+
+
+def already_running(host, port):
+    """True if a Tellbird already answers on this address. Proxies are
+    skipped: they'd answer for localhost themselves, or fail."""
+    from .server import APP_HEADER
+    from .tray import panel_url
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(panel_url(host, port) + "health", timeout=1) as r:
+            return r.headers.get(APP_HEADER) is not None
+    except Exception:
+        return False
 
 
 def main():
@@ -317,6 +333,10 @@ def main():
             tray.run_failed(paths, str(e))
         except KeyboardInterrupt:
             pass
+        return
+    if already_running(bot.settings["http_host"], bot.settings["http_port"]):
+        # Launched again: the running one carries on, this one goes quietly.
+        log.info("Tellbird is already running, exiting.")
         return
     log.info(f"Mode: {bot.settings['mode']} | "
              f"Output: {bot.settings['output_device'] or 'default'}")

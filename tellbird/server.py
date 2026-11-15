@@ -7,12 +7,16 @@ import re
 
 from aiohttp import web
 
+from . import __version__
 from .config import ConfigError
 from .paths import ICON_PATH
 
 log = logging.getLogger("tellbird")
 
 STILL_STARTING = "Tellbird is still starting up"
+# Sent with /health, so a second launch can tell a running Tellbird apart from
+# another program on the same port (see app.already_running).
+APP_HEADER = "X-Tellbird"
 
 
 async def _read_tts_request(request):
@@ -104,7 +108,7 @@ def create_app(bot):
         return web.Response(text=f"cleared {dropped}")
 
     async def handle_health(request):
-        return web.Response(text="ok")
+        return web.Response(text="ok", headers={APP_HEADER: __version__})
 
     async def handle_panel(request):
         # Revalidate every time, so an updated app never shows the old page.
