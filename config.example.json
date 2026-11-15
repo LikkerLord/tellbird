@@ -35,8 +35,8 @@
   // Easiest: pick it from the list in the panel's settings.
   "output_device": null,
 
-  // Speak the sender's name before the message.  --- TWITCH MODE ONLY ---
-  // (HTTP mode always speaks just the text you pass in.)
+  // Speak the sender's name before the message. In HTTP mode only when the
+  // request includes a name (/tts?name=...); otherwise just the text is spoken.
   "read_username": true,
 
   // How name + message are combined when read_username is true (twitch mode).

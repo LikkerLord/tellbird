@@ -44,6 +44,25 @@ def test_tts_request_shapes(make_bot):
     with_client(make_bot, test)
 
 
+def test_tts_name_is_spoken_like_twitch_chat(make_bot):
+    async def test(client, bot):
+        # Firebot's chat event: login for the filters, a (custom) name to speak.
+        r = await client.post("/tts?user=alice_w&name=Big%20Al", data="the IT guy is here",
+                              headers={"Content-Type": "text/plain"})
+        assert r.status == 200
+        assert queued(bot) == ["Big Al says: the I-T guy is here."]
+        assert bot.queue.items()[0].user == "Big Al"
+        # The login still counts for ignored users.
+        r = await client.post("/tts?user=Nightbot&name=Nightbot", data="hello",
+                              headers={"Content-Type": "text/plain"})
+        assert r.status == 204
+        await client.post("/tts", json={"name": "Bo", "text": "hi"})
+        assert queued(bot)[-1] == "Bo says: hi."
+        await client.get("/tts", params={"text": "no name here"})
+        assert queued(bot)[-1] == "no name here."
+    with_client(make_bot, test)
+
+
 def test_tts_rejects_non_object_json(make_bot):
     async def test(client, bot):
         r = await client.post("/tts", json=["hello"])

@@ -19,11 +19,16 @@ STILL_STARTING = "Tellbird is still starting up"
 APP_HEADER = "X-Tellbird"
 
 
+TTS_FIELDS = ("user", "name", "text")
+
+
 async def _read_tts_request(request):
-    """-> (user, text) from any of the request shapes /tts accepts (see README)."""
-    user = request.query.get("user", "")
+    """-> {"user", "name", "text"} from any of the request shapes /tts
+    accepts (see README). The URL's query string fills in what the body
+    doesn't have."""
+    fields = {k: request.query.get(k, "") for k in TTS_FIELDS}
     if request.method == "GET":
-        return user, request.query.get("text", "")
+        return fields
     if request.content_type == "application/json":
         try:
             data = await request.json()
@@ -31,21 +36,21 @@ async def _read_tts_request(request):
             # Bots like Mix It Up paste chat text into a JSON template with
             # no escaping, so a stray quote/backslash in the message breaks
             # the JSON. Fall back to the raw body as plain text.
-            return user, await request.text()
+            return {**fields, "text": await request.text() or fields["text"]}
         if not isinstance(data, (dict, list)):
             # Firebot marks any body that happens to parse as JSON as JSON, so a
             # plain-text message like "123" or "true" arrives that way.
-            return user, await request.text()
+            return {**fields, "text": await request.text() or fields["text"]}
         if not isinstance(data, dict):
             raise web.HTTPBadRequest(text='expected a JSON object like {"text": "..."}')
-        return data.get("user", user), data.get("text", "")
+        return {k: data.get(k, fields[k]) for k in TTS_FIELDS}
     if request.content_type in ("application/x-www-form-urlencoded", "multipart/form-data"):
         data = await request.post()
-        return data.get("user", user), data.get("text", "")
+        return {k: data.get(k, fields[k]) for k in TTS_FIELDS}
     # No structured encoding (e.g. Mix It Up's HTTP Custom Request, which
     # can't escape the message for JSON/form bodies): treat the whole POST
     # body as the literal text to speak, username via ?user= instead.
-    return user, await request.text()
+    return {**fields, "text": await request.text() or fields["text"]}
 
 
 def _local_api_request(request):
@@ -87,17 +92,20 @@ def create_app(bot):
     async def handle_tts(request):
         if not bot.speech_ready:
             return web.Response(text=STILL_STARTING, status=503)
-        user, text = await _read_tts_request(request)
-        display = str(user).strip()
+        fields = await _read_tts_request(request)
+        display = str(fields["user"]).strip()
         user = display.lower()                    # filters/cooldowns are case-insensitive
-        text = str(text).strip()
+        name = str(fields["name"]).strip()        # the name to speak, if any
+        text = str(fields["text"]).strip()
         if not text or bot.chat_filter.should_skip(user, text):
             return web.Response(status=204)
         cleaned = bot.chat_filter.clean_text(text, user)
         if not cleaned:
             return web.Response(status=204)
-        log.info(f"[http] {cleaned}")
-        await bot.enqueue(cleaned, user=display, source="http")   # spoken as-is, no name prefix
+        log.info(f"[http] {name + ': ' if name else ''}{cleaned}")
+        # Without a name it's spoken as-is; with one, like a Twitch chat message.
+        spoken = bot.chat_filter.build_spoken(name, cleaned) if name else cleaned
+        await bot.enqueue(spoken, cleaned, name or display, "http")
         return web.Response(text="ok")
 
     async def handle_skip(request):
@@ -153,8 +161,7 @@ def create_app(bot):
             raise web.HTTPNotFound(text=f"Lists: {', '.join(WORD_LISTS)}; actions: add, remove")
         if not bot.speech_ready:
             return web.Response(text=STILL_STARTING, status=503)
-        _user, text = await _read_tts_request(request)
-        text = str(text or request.query.get("text", "")).strip()
+        text = str((await _read_tts_request(request))["text"]).strip()
         try:
             return web.Response(text=await bot.edit_word_list(name, action, text))
         except ValueError as e:

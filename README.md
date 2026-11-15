@@ -129,6 +129,11 @@ and restart Tellbird. Your bot then sends text to `http://127.0.0.1:5050/tts`:
 Other tools can also `POST` JSON (`{"user": "...", "text": "..."}`) or a form
 (`user=...&text=...`).
 
+`user` is the chatter's login. It's what **Ignored users**, the cooldown and
+the repeat filters go by, so send it whenever you have it. Text is spoken as
+it is, unless you also send `name`: then Tellbird reads it like Twitch chat,
+e.g. "Alice says: hello", following **Read username** and **Username format**.
+
 > **Send the message exactly as it was written, capitals included.** Tellbird
 > tells the acronym "IT" (read "I-T") from the word "it" by its capitals. If
 > your bot sends the text in all lowercase, or uses a variable that does,

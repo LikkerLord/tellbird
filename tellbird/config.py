@@ -94,7 +94,8 @@ CONFIG_SCHEMA = [
            restart=True),
 
     _field("Speech", "read_username", "bool", True, "Read username",
-           "Speak the sender's name before the message (twitch mode only)."),
+           "Speak the sender's name before the message. In http mode only when the "
+           "request includes a name."),
     _field("Speech", "username_format", "str", "{user} says: {text}", "Username format",
            "How name and message are combined. Placeholders: {user} and {text}.",
            depends="read_username"),
