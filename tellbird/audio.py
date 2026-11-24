@@ -79,6 +79,29 @@ def _is_real_device(device, api, has_sound_server):
     return not device["name"].startswith("Bluetooth internal capture stream")
 
 
+_warned_pipewire = False
+
+
+def _pipewire_running():
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    return bool(runtime) and os.path.exists(os.path.join(runtime, "pipewire-0"))
+
+
+def _warn_pipewire_unreachable():
+    """PipeWire is running but PortAudio only reaches the raw sound cards:
+    there's no libjack that talks to PipeWire (often jack2's is installed
+    instead), so virtual sinks and per-app devices can't be listed. Said once,
+    since the device list is fetched every time settings open."""
+    global _warned_pipewire
+    if _warned_pipewire or not _pipewire_running():
+        return
+    _warned_pipewire = True
+    log.warning("[audio] PipeWire is running, but Tellbird can only reach the raw "
+                "sound cards, so virtual sinks won't be listed. Install PipeWire's "
+                "JACK support (Arch: pipewire-jack, Debian/Ubuntu: pipewire-jack, "
+                "Fedora: pipewire-jack-audio-connection-kit-libs) and restart Tellbird.")
+
+
 def output_device_names():
     """The output devices to offer, each by a name that selects exactly that
     device: just its name, or "name, host API" when several host APIs offer
@@ -106,6 +129,8 @@ def output_device_names():
     else:
         has_sound_server = "ALSA" in apis and any(
             apis[d["hostapi"]] in SOUND_SERVER_APIS for _, d in devices)
+        if "ALSA" in apis and not has_sound_server:
+            _warn_pipewire_unreachable()
         devices = [(i, d) for i, d in devices
                    if _is_real_device(d, apis[d["hostapi"]], has_sound_server)]
     counts = Counter(d["name"] for _, d in devices)

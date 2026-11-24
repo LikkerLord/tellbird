@@ -89,3 +89,20 @@ def test_jack_elsewhere_doesnt_hide_other_devices(monkeypatch):
     audio = load_audio(monkeypatch, [device("Speakers", 0), device("system", 1)],
                        [{"name": "Windows WASAPI"}, {"name": "JACK Audio Connection Kit"}])
     assert audio.output_device_names() == ["Speakers", "system"]
+
+
+def test_linux_warns_once_when_pipewire_is_unreachable(monkeypatch, tmp_path, caplog):
+    (tmp_path / "pipewire-0").touch()
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    audio = load_audio(monkeypatch, [device("HDA Intel PCH: ALC897 (hw:0,0)", 0)], LINUX_APIS)
+    audio.output_device_names()
+    audio.output_device_names()
+    warnings = [r for r in caplog.records if "pipewire-jack" in r.getMessage()]
+    assert len(warnings) == 1
+
+
+def test_linux_doesnt_warn_without_pipewire(monkeypatch, tmp_path, caplog):
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    audio = load_audio(monkeypatch, [device("HDA Intel PCH: ALC897 (hw:0,0)", 0)], LINUX_APIS)
+    audio.output_device_names()
+    assert not [r for r in caplog.records if "pipewire-jack" in r.getMessage()]
