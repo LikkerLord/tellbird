@@ -160,6 +160,16 @@ def resample_linear(data, orig_rate, target_rate):
     return np.interp(x_target, x_orig, data).astype("float32")
 
 
+def _channels(device):
+    """Stereo where the device has it, the speech on both sides. A mono stream
+    plays only on the left through JACK (so PipeWire on Linux): PortAudio
+    connects its one port to the first playback port, and nothing upmixes it."""
+    try:
+        return max(1, min(2, sd.query_devices(device, "output")["max_output_channels"]))
+    except Exception:
+        return 1
+
+
 def play_blocking(data, rate, device, cancel):
     """Play mono float32 `data` and return when it's done, or soon after
     `cancel` (a threading.Event) is set from any thread.
@@ -181,14 +191,15 @@ def play_blocking(data, rate, device, cancel):
             outdata.fill(0)
             raise sd.CallbackAbort
         chunk = data[pos:pos + frames]
-        outdata[:len(chunk), 0] = chunk
+        outdata[:len(chunk)] = chunk[:, None]
         outdata[len(chunk):] = 0
         pos += len(chunk)
         if pos >= len(data):
             raise sd.CallbackStop
 
     deadline = time.monotonic() + len(data) / rate + 5
-    with sd.OutputStream(samplerate=rate, device=device, channels=1, dtype="float32",
+    with sd.OutputStream(samplerate=rate, device=device, channels=_channels(device),
+                         dtype="float32",
                          callback=callback, finished_callback=done.set) as stream:
         while not done.wait(0.1):
             if cancel.is_set() or time.monotonic() > deadline:
