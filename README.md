@@ -207,6 +207,10 @@ afterwards.
   Support" extension, or just use the panel at <http://127.0.0.1:5050/>.
 - **No sound on Linux:** install PortAudio (`sudo apt install libportaudio2`
   or `sudo dnf install portaudio`).
+- **Virtual sinks missing on Linux (only sound cards listed):** install
+  PipeWire's JACK support (`sudo pacman -S pipewire-jack`, `sudo apt install
+  pipewire-jack` or `sudo dnf install pipewire-jack-audio-connection-kit-libs`)
+  and restart Tellbird.
 - **Something else:** the log file shows what's going on - tray menu ->
   **Open log folder** -> `tellbird.log`. Please include it when you
   [report a problem](https://github.com/LikkerLord/tellbird/issues).
